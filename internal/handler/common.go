@@ -6,6 +6,11 @@ import (
 	"net/http"
 )
 
+func UnknownMetricTypeHandler(w http.ResponseWriter, r *http.Request) {
+	slog.Error(fmt.Sprintf("unknown metric type received in the path: %s", r.URL.Path))
+	http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+}
+
 func storeError(w http.ResponseWriter, op string, err error) {
 	slog.Error(fmt.Sprintf("%s: failed to store counter: %s", op, err.Error()))
 	http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
