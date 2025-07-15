@@ -30,8 +30,10 @@ func router() *http.ServeMux {
 	gaugeHandler := handler.NewGaugesHandler(metricsRepository)
 
 	mux.HandleFunc("/update/counter/{metric}/{value}", counterHandler.Handle)
+	mux.HandleFunc("/update/counter/", counterHandler.Handle)
 	mux.HandleFunc("/update/gauge/{metric}/{value}", gaugeHandler.Handle)
-	mux.HandleFunc("/update/", handler.UnknownMetricTypeHandler)
+	mux.HandleFunc("/update/gauge/", gaugeHandler.Handle)
+	mux.HandleFunc("/update/{anything}/", handler.UnknownMetricTypeHandler)
 
 	return mux
 }
