@@ -13,11 +13,7 @@ func NewMetricsRepository() *MetricsRepository {
 }
 
 func (m *MetricsRepository) StoreCounter(metricName string, value int64) error {
-	if _, ok := m.counters[metricName]; ok {
-		m.counters[metricName] += value
-	} else {
-		m.counters[metricName] = value
-	}
+	m.counters[metricName] += value
 
 	return nil
 }
