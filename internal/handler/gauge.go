@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"fmt"
+	"log/slog"
 	"net/http"
 	"strconv"
 )
@@ -49,6 +51,8 @@ func (h GaugesHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		storeError(w, op, err)
 		return
 	}
+
+	slog.Info(fmt.Sprintf("%s: stored: %s: %f", op, metricName, metricValue))
 
 	w.WriteHeader(http.StatusOK)
 }
