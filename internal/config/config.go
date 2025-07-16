@@ -1,7 +1,9 @@
 package config
 
+import "flag"
+
 type ServerConfig struct {
-	Port int `yaml:"port" default:"8080"`
+	Addr string `yaml:"address" default:"localhost:8080"`
 }
 
 type Config struct {
@@ -9,9 +11,15 @@ type Config struct {
 }
 
 func Load() *Config {
-	return &Config{
+	cfg := &Config{
 		Server: ServerConfig{
-			Port: 8080,
+			Addr: "localhost:8080",
 		},
 	}
+
+	flag.StringVar(&cfg.Server.Addr, "a", "localhost:8080", "адрес эндпоинта HTTP-сервера")
+
+	flag.Parse()
+
+	return cfg
 }

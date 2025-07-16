@@ -1,23 +1,31 @@
 package config
 
-import "time"
+import "flag"
 
 type ServerConfig struct {
 	Addr string `yaml:"addr"`
 }
 
 type Config struct {
-	Server         ServerConfig  `yaml:"server"`
-	PollInterval   time.Duration `yaml:"pollInterval"`
-	ReportInterval time.Duration `yaml:"reportInterval"`
+	Server         ServerConfig `yaml:"server"`
+	PollInterval   int          `yaml:"pollInterval"`
+	ReportInterval int          `yaml:"reportInterval"`
 }
 
 func Load() *Config {
-	return &Config{
+	cfg := &Config{
 		Server: ServerConfig{
-			Addr: "http://localhost:8080",
+			Addr: "localhost:8080",
 		},
-		PollInterval:   2 * time.Second,
-		ReportInterval: 10 * time.Second,
+		PollInterval:   2,
+		ReportInterval: 10,
 	}
+
+	flag.IntVar(&cfg.PollInterval, "p", 2, "частота опроса метрик из пакета runtime в секундах")
+	flag.IntVar(&cfg.ReportInterval, "r", 10, "частота отправки метрик на сервер в секундах")
+	flag.StringVar(&cfg.Server.Addr, "a", "localhost:8080", "адрес эндпоинта HTTP-сервера")
+
+	flag.Parse()
+
+	return cfg
 }

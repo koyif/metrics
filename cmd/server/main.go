@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/koyif/metrics/internal/config"
 	"github.com/koyif/metrics/internal/handler"
@@ -19,8 +18,7 @@ func main() {
 }
 
 func run(cfg *config.Config) error {
-	addr := fmt.Sprintf(":%d", cfg.Server.Port)
-	return http.ListenAndServe(addr, router())
+	return http.ListenAndServe(cfg.Server.Addr, router())
 }
 
 func router() *chi.Mux {

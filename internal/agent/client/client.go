@@ -14,7 +14,7 @@ type MetricsClient struct {
 
 func New(cfg *config.Config, c *http.Client) (*MetricsClient, error) {
 	const op = "MetricsClient.New"
-	baseURL, err := url.Parse(cfg.Server.Addr)
+	baseURL, err := url.Parse(fmt.Sprintf("http://%s", cfg.Server.Addr))
 	if err != nil {
 		return nil, fmt.Errorf("%s: error creating MetricsClient: %w", op, err)
 	}

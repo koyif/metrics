@@ -37,8 +37,8 @@ func New(cfg *config.Config, scraper scraper, cl metricsClient) *Agent {
 
 func (a *Agent) Start(ctx context.Context) {
 	go func() {
-		pollTicker := time.NewTicker(a.cfg.PollInterval)
-		reportTicker := time.NewTicker(a.cfg.ReportInterval)
+		pollTicker := time.NewTicker(time.Duration(a.cfg.PollInterval) * time.Second)
+		reportTicker := time.NewTicker(time.Duration(a.cfg.ReportInterval) * time.Second)
 
 	loop:
 		for {
