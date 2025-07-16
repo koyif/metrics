@@ -116,7 +116,7 @@ func TestCountersHandler_Handle(t *testing.T) {
 		},
 	}
 
-	handler := NewCountersHandler(MockCountersRepository{})
+	handler := NewCountersPostHandler(MockCountersRepository{})
 	mux := http.NewServeMux()
 	mux.HandleFunc("/update/counter/{metric}/{value}", handler.Handle)
 	mux.HandleFunc("/update/counter/{metric}", handler.Handle)

@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
+	"github.com/go-chi/chi/v5"
 	"github.com/koyif/metrics/internal/config"
 	"github.com/koyif/metrics/internal/handler"
 	"github.com/koyif/metrics/internal/repository"
+	"github.com/koyif/metrics/internal/service"
 	"net/http"
 )
 
@@ -21,18 +23,29 @@ func run(cfg *config.Config) error {
 	return http.ListenAndServe(addr, router())
 }
 
-func router() *http.ServeMux {
-	mux := http.NewServeMux()
+func router() *chi.Mux {
+	mux := chi.NewMux()
 
 	metricsRepository := repository.NewMetricsRepository()
 
-	counterHandler := handler.NewCountersHandler(metricsRepository)
-	gaugeHandler := handler.NewGaugesHandler(metricsRepository)
+	metricsService := service.NewMetricsService(metricsRepository)
 
-	mux.HandleFunc("/update/counter/{metric}/{value}", counterHandler.Handle)
-	mux.HandleFunc("/update/counter/", counterHandler.Handle)
-	mux.HandleFunc("/update/gauge/{metric}/{value}", gaugeHandler.Handle)
-	mux.HandleFunc("/update/gauge/", gaugeHandler.Handle)
+	summaryHandler := handler.NewSummaryHandler(metricsService)
+
+	gaugesGetHandler := handler.NewGaugesGetHandler(metricsService)
+	countersGetHandler := handler.NewCountersGetHandler(metricsService)
+
+	countersPostHandler := handler.NewCountersPostHandler(metricsService)
+	gaugesPostHandler := handler.NewGaugesPostHandler(metricsService)
+
+	mux.HandleFunc("/", summaryHandler.Handle)
+	mux.HandleFunc("/value/gauge/{metric}", gaugesGetHandler.Handle)
+	mux.HandleFunc("/value/counter/{metric}", countersGetHandler.Handle)
+
+	mux.HandleFunc("/update/counter/{metric}/{value}", countersPostHandler.Handle)
+	mux.HandleFunc("/update/counter/", countersPostHandler.Handle)
+	mux.HandleFunc("/update/gauge/{metric}/{value}", gaugesPostHandler.Handle)
+	mux.HandleFunc("/update/gauge/", gaugesPostHandler.Handle)
 	mux.HandleFunc("/update/{anything}/", handler.UnknownMetricTypeHandler)
 
 	return mux

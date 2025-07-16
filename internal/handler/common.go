@@ -21,12 +21,12 @@ func incorrectValueError(w http.ResponseWriter, op string, value string) {
 	http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 }
 
-func valueNotPresentError(w http.ResponseWriter, r *http.Request, op string) {
-	slog.Error(fmt.Sprintf("%s: value not found in the path: %s", op, r.URL.Path))
-	http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+func valueNotFoundError(w http.ResponseWriter, op, metricName string) {
+	slog.Error(fmt.Sprintf("%s: value not found in storage: %s", op, metricName))
+	http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 }
 
-func metricNameOrValueNotPresentError(w http.ResponseWriter, r *http.Request, op string) {
+func metricNameNotPresentError(w http.ResponseWriter, r *http.Request, op string) {
 	slog.Error(fmt.Sprintf("%s: metric name not found in the path: %s", op, r.URL.Path))
 	http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 }

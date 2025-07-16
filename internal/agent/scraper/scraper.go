@@ -4,7 +4,7 @@ import (
 	"runtime"
 )
 
-type Storage interface {
+type storage interface {
 	Clean()
 	Store(metricName string, value float64)
 	Metrics() map[string]float64
@@ -12,10 +12,10 @@ type Storage interface {
 
 type Scraper struct {
 	count   int64
-	storage Storage
+	storage storage
 }
 
-func New(storage Storage) *Scraper {
+func New(storage storage) *Scraper {
 	return &Scraper{
 		count:   0,
 		storage: storage,

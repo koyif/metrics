@@ -10,24 +10,24 @@ import (
 	"time"
 )
 
-type Scraper interface {
+type scraper interface {
 	Scrap()
 	Count() int64
 	Metrics() map[string]float64
 	Reset()
 }
 
-type Agent struct {
-	cfg           *config.Config
-	scraper       Scraper
-	metricsClient MetricsClient
-}
-
-type MetricsClient interface {
+type metricsClient interface {
 	Send(metricType, metricName, value string) error
 }
 
-func New(cfg *config.Config, scraper Scraper, cl MetricsClient) *Agent {
+type Agent struct {
+	cfg           *config.Config
+	scraper       scraper
+	metricsClient metricsClient
+}
+
+func New(cfg *config.Config, scraper scraper, cl metricsClient) *Agent {
 	return &Agent{
 		cfg:           cfg,
 		scraper:       scraper,

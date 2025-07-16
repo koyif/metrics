@@ -104,7 +104,7 @@ func TestGaugesHandler_Handle(t *testing.T) {
 		},
 	}
 
-	handler := NewGaugesHandler(MockGaugesRepository{})
+	handler := NewGaugesPostHandler(MockGaugesRepository{})
 	mux := http.NewServeMux()
 	mux.HandleFunc("/update/gauge/{metric}/{value}", handler.Handle)
 	mux.HandleFunc("/update/gauge/{metric}", handler.Handle)
