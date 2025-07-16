@@ -32,7 +32,7 @@ func (ch CountersHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	metricName := r.PathValue("metric")
 	value := r.PathValue("value")
 	if metricName == "" || value == "" {
-		metricNameNotPresentError(w, r, op)
+		metricNameOrValueNotPresentError(w, r, op)
 		return
 	}
 

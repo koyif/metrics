@@ -2,9 +2,11 @@ package handler
 
 import (
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 )
 
@@ -85,7 +87,7 @@ func TestGaugesHandler_Handle(t *testing.T) {
 				metric: "gauge",
 			},
 			want: want{
-				status: http.StatusBadRequest,
+				status: http.StatusNotFound,
 			},
 		},
 		{
@@ -103,29 +105,38 @@ func TestGaugesHandler_Handle(t *testing.T) {
 	}
 
 	handler := NewGaugesHandler(MockGaugesRepository{})
+	mux := http.NewServeMux()
+	mux.HandleFunc("/update/gauge/{metric}/{value}", handler.Handle)
+	mux.HandleFunc("/update/gauge/{metric}", handler.Handle)
+	mux.HandleFunc("/update/gauge", handler.Handle)
+
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	baseURL, err := url.Parse(server.URL)
+	assert.NoError(t, err)
+
+	client := http.Client{}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := httptest.NewRequest(tt.when.method, tt.when.path, nil)
-			if tt.when.metric != "" {
-				r.SetPathValue("metric", tt.when.metric)
-			}
+			reqURL := baseURL.
+				JoinPath(tt.when.path).
+				JoinPath(tt.when.metric).
+				JoinPath(tt.when.value).
+				String()
+			req, err := http.NewRequest(tt.when.method, reqURL, nil)
+			require.NoError(t, err)
 
-			if tt.when.value != "" {
-				r.SetPathValue("value", tt.when.value)
-			}
+			response, err := client.Do(req)
+			require.NoError(t, err)
 
-			w := httptest.NewRecorder()
+			defer response.Body.Close()
 
-			handler.Handle(w, r)
-
-			res := w.Result()
-			defer res.Body.Close()
-
-			assert.Equal(t, tt.want.status, res.StatusCode)
+			assert.Equal(t, tt.want.status, response.StatusCode)
 
 			if tt.want.body != "" {
-				body, err := io.ReadAll(res.Body)
+				body, err := io.ReadAll(response.Body)
 
 				assert.NoError(t, err)
 				assert.JSONEq(t, tt.want.body, string(body))

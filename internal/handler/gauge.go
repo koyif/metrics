@@ -30,14 +30,9 @@ func (h GaugesHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	metricName := r.PathValue("metric")
-	if metricName == "" {
-		metricNameNotPresentError(w, r, op)
-		return
-	}
-
 	value := r.PathValue("value")
-	if value == "" {
-		valueNotPresentError(w, r, op)
+	if metricName == "" || value == "" {
+		metricNameOrValueNotPresentError(w, r, op)
 		return
 	}
 
