@@ -46,7 +46,10 @@ func router() *chi.Mux {
 	mux.HandleFunc("/update/counter/", countersPostHandler.Handle)
 	mux.HandleFunc("/update/gauge/{metric}/{value}", gaugesPostHandler.Handle)
 	mux.HandleFunc("/update/gauge/", gaugesPostHandler.Handle)
+
 	mux.HandleFunc("/update/{anything}/", handler.UnknownMetricTypeHandler)
+	mux.HandleFunc("/update/{anything}/{metric}/", handler.UnknownMetricTypeHandler)
+	mux.HandleFunc("/update/{anything}/{metric}/{value}", handler.UnknownMetricTypeHandler)
 
 	return mux
 }
