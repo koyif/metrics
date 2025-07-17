@@ -129,15 +129,19 @@ func TestGaugesHandler_Handle(t *testing.T) {
 			require.NoError(t, err)
 
 			response, err := client.Do(req)
-			require.NoError(t, err)
 
-			defer func(Body io.ReadCloser) {
-				err := Body.Close()
-				if err != nil {
-					assert.Fail(t, "error closing response body: %v", err)
+			defer func(Resp *http.Response) {
+				if Resp == nil || Resp.Body == nil {
+					return
 				}
-			}(response.Body)
 
+				err := Resp.Body.Close()
+				if err != nil {
+					t.Errorf("error closing response body: %v", err)
+				}
+			}(response)
+
+			require.NoError(t, err)
 			assert.Equal(t, tt.want.status, response.StatusCode)
 
 			if tt.want.body != "" {
