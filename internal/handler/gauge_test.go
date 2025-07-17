@@ -1,9 +1,11 @@
 package handler
 
 import (
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -129,19 +131,22 @@ func TestGaugesHandler_Handle(t *testing.T) {
 			require.NoError(t, err)
 
 			response, err := client.Do(req)
-
-			defer func(Resp *http.Response) {
-				if Resp == nil || Resp.Body == nil {
+			if err != nil {
+				err := response.Body.Close()
+				if err != nil {
+					slog.Error(fmt.Sprintf("Failed to close response body: %s", err))
 					return
 				}
+			}
+			require.NoError(t, err)
 
-				err := Resp.Body.Close()
+			defer func(Body io.ReadCloser) {
+				err := Body.Close()
 				if err != nil {
 					t.Errorf("error closing response body: %v", err)
 				}
-			}(response)
+			}(response.Body)
 
-			require.NoError(t, err)
 			assert.Equal(t, tt.want.status, response.StatusCode)
 
 			if tt.want.body != "" {
