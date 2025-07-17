@@ -7,31 +7,30 @@ import (
 )
 
 func UnknownMetricTypeHandler(w http.ResponseWriter, r *http.Request) {
-	slog.Error(fmt.Sprintf("unknown metric type received in the path: %s", r.URL.Path))
 	http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 }
 
-func storeError(w http.ResponseWriter, op string, err error) {
-	slog.Error(fmt.Sprintf("%s: failed to store counter: %s", op, err.Error()))
+func storeError(w http.ResponseWriter, err error) {
+	slog.Error(fmt.Sprintf("failed to store counter: %s", err.Error()))
 	http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 }
 
-func incorrectValueError(w http.ResponseWriter, op string, value string) {
-	slog.Error(fmt.Sprintf("%s: incorrect value: %s", op, value))
+func incorrectValueError(w http.ResponseWriter, value string) {
+	slog.Error(fmt.Sprintf("incorrect value: %s", value))
 	http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 }
 
-func valueNotFoundError(w http.ResponseWriter, op, metricName string) {
-	slog.Error(fmt.Sprintf("%s: value not found in storage: %s", op, metricName))
+func valueNotFoundError(w http.ResponseWriter, metricName string) {
+	slog.Error(fmt.Sprintf("value not found in storage: %s", metricName))
 	http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 }
 
-func metricNameNotPresentError(w http.ResponseWriter, r *http.Request, op string) {
-	slog.Error(fmt.Sprintf("%s: metric name not found in the path: %s", op, r.URL.Path))
+func metricNameNotPresentError(w http.ResponseWriter, r *http.Request) {
+	slog.Error(fmt.Sprintf("metric name not found in the path: %s", r.URL.Path))
 	http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 }
 
-func invalidMethodError(w http.ResponseWriter, r *http.Request, op string) {
-	slog.Error(fmt.Sprintf("%s: invalid method: %s", op, r.Method))
+func invalidMethodError(w http.ResponseWriter, r *http.Request) {
+	slog.Error(fmt.Sprintf("invalid method: %s", r.Method))
 	http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 }

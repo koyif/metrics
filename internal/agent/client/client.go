@@ -15,10 +15,9 @@ type MetricsClient struct {
 }
 
 func New(cfg *config.Config, c *http.Client) (*MetricsClient, error) {
-	const op = "MetricsClient.New"
 	baseURL, err := url.Parse(fmt.Sprintf("http://%s", cfg.Server.Addr))
 	if err != nil {
-		return nil, fmt.Errorf("%s: error creating MetricsClient: %w", op, err)
+		return nil, fmt.Errorf("error creating MetricsClient: %w", err)
 	}
 
 	baseURL = baseURL.JoinPath("update")
@@ -30,7 +29,6 @@ func New(cfg *config.Config, c *http.Client) (*MetricsClient, error) {
 }
 
 func (c *MetricsClient) Send(metricType, metricName, value string) error {
-	const op = "MetricsClient.Send"
 	u := c.baseURL.
 		JoinPath(metricType).
 		JoinPath(metricName).
@@ -41,7 +39,7 @@ func (c *MetricsClient) Send(metricType, metricName, value string) error {
 		if response != nil && response.Body != nil {
 			err := response.Body.Close()
 			if err != nil {
-				slog.Error(fmt.Sprintf("%s: error closing response body: %v", op, err))
+				slog.Error(fmt.Sprintf("error closing response body: %v", err))
 			}
 		}
 		return err
@@ -50,12 +48,12 @@ func (c *MetricsClient) Send(metricType, metricName, value string) error {
 	defer func(Body io.ReadCloser) {
 		err := Body.Close()
 		if err != nil {
-			slog.Error(fmt.Sprintf("%s: error closing response body: %v", op, err))
+			slog.Error(fmt.Sprintf("error closing response body: %v", err))
 		}
 	}(response.Body)
 
 	if response.StatusCode != http.StatusOK {
-		return fmt.Errorf("%s: incorrect response status: %d", op, response.StatusCode)
+		return fmt.Errorf("incorrect response status from Metrics Server: %d", response.StatusCode)
 	}
 
 	return nil

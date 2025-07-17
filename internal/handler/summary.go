@@ -37,9 +37,8 @@ func NewSummaryHandler(service summaryGetter) *SummaryHandler {
 }
 
 func (h *SummaryHandler) Handle(w http.ResponseWriter, r *http.Request) {
-	const op = "SummaryHandler.Handle"
 	if r.Method != http.MethodGet {
-		invalidMethodError(w, r, op)
+		invalidMethodError(w, r)
 		return
 	}
 

@@ -61,7 +61,6 @@ func (a *Agent) pollMetrics() {
 }
 
 func (a *Agent) reportMetrics() {
-	const op = "Agent.reportMetrics"
 	gaugeMetrics := a.scraper.Metrics()
 	gaugeMetrics["RandomValue"] = rand.Float64()
 
@@ -69,29 +68,31 @@ func (a *Agent) reportMetrics() {
 		"PollCount": a.scraper.Count(),
 	}
 
-	shouldBeReset := true
+	sent := 0
 
 	for k, v := range gaugeMetrics {
-		slog.Info(fmt.Sprintf("%s: %s: %f", op, k, v))
+		slog.Debug(fmt.Sprintf("sending gauge: %s: %f", k, v))
 		value := strconv.FormatFloat(v, 'f', -1, 64)
 
 		if err := a.metricsClient.Send("gauge", k, value); err != nil {
-			slog.Error(fmt.Sprintf("%s: %s: %v", op, k, err))
-			shouldBeReset = false
+			slog.Error(fmt.Sprintf("%s: %v", k, err))
+		} else {
+			sent++
 		}
 	}
 
 	for k, v := range counterMetrics {
-		slog.Info(fmt.Sprintf("%s: %s: %d", op, k, v))
+		slog.Debug(fmt.Sprintf("sending counter: %s: %d", k, v))
 		value := strconv.FormatInt(v, 10)
 
 		if err := a.metricsClient.Send("counter", k, value); err != nil {
-			slog.Error(fmt.Sprintf("%s: %s: %v", op, k, err))
-			shouldBeReset = false
+			slog.Error(fmt.Sprintf("%s: %v", k, err))
+		} else {
+			sent++
 		}
 	}
 
-	if shouldBeReset {
+	if sent > 0 {
 		a.scraper.Reset()
 	}
 }
