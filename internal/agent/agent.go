@@ -37,17 +37,16 @@ func New(cfg *config.Config, scraper scraper, cl metricsClient) *Agent {
 
 func (a *Agent) Start(ctx context.Context) {
 	go func() {
-		pollTicker := time.NewTicker(time.Duration(a.cfg.PollInterval) * time.Second)
-		reportTicker := time.NewTicker(time.Duration(a.cfg.ReportInterval) * time.Second)
+		pollTicker := time.NewTicker(a.cfg.PollInterval)
+		reportTicker := time.NewTicker(a.cfg.ReportInterval)
 
-	loop:
 		for {
 			select {
 			case <-ctx.Done():
 				pollTicker.Stop()
 				reportTicker.Stop()
 
-				break loop
+				return
 			case <-pollTicker.C:
 				a.pollMetrics()
 			case <-reportTicker.C:
@@ -70,12 +69,15 @@ func (a *Agent) reportMetrics() {
 		"PollCount": a.scraper.Count(),
 	}
 
+	shouldBeReset := true
+
 	for k, v := range gaugeMetrics {
 		slog.Info(fmt.Sprintf("%s: %s: %f", op, k, v))
 		value := strconv.FormatFloat(v, 'f', -1, 64)
 
 		if err := a.metricsClient.Send("gauge", k, value); err != nil {
 			slog.Error(fmt.Sprintf("%s: %s: %v", op, k, err))
+			shouldBeReset = false
 		}
 	}
 
@@ -85,8 +87,11 @@ func (a *Agent) reportMetrics() {
 
 		if err := a.metricsClient.Send("counter", k, value); err != nil {
 			slog.Error(fmt.Sprintf("%s: %s: %v", op, k, err))
+			shouldBeReset = false
 		}
 	}
 
-	a.scraper.Reset()
+	if shouldBeReset {
+		a.scraper.Reset()
+	}
 }

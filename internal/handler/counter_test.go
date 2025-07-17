@@ -143,14 +143,19 @@ func TestCountersHandler_Handle(t *testing.T) {
 			response, err := client.Do(req)
 			require.NoError(t, err)
 
-			defer response.Body.Close()
+			defer func(Body io.ReadCloser) {
+				err := Body.Close()
+				if err != nil {
+					t.Errorf("error closing response body: %v", err)
+				}
+			}(response.Body)
 
 			assert.Equal(t, tt.want.status, response.StatusCode)
 
 			if tt.want.body != "" {
 				body, err := io.ReadAll(response.Body)
 
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.JSONEq(t, tt.want.body, string(body))
 			}
 		})

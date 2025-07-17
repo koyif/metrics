@@ -3,6 +3,8 @@ package client
 import (
 	"fmt"
 	"github.com/koyif/metrics/internal/agent/config"
+	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 )
@@ -37,12 +39,20 @@ func (c *MetricsClient) Send(metricType, metricName, value string) error {
 	response, err := c.httpClient.Post(u.String(), "text/plain", nil)
 	if err != nil {
 		if response != nil && response.Body != nil {
-			_ = response.Body.Close()
+			err := response.Body.Close()
+			if err != nil {
+				slog.Error(fmt.Sprintf("%s: error closing response body: %v", op, err))
+			}
 		}
 		return err
 	}
 
-	defer response.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			slog.Error(fmt.Sprintf("%s: error closing response body: %v", op, err))
+		}
+	}(response.Body)
 
 	if response.StatusCode != http.StatusOK {
 		return fmt.Errorf("%s: incorrect response status: %d", op, response.StatusCode)
