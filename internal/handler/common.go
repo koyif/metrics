@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-func UnknownMetricTypeHandler(w http.ResponseWriter, r *http.Request) {
+func UnknownMetricTypeHandler(w http.ResponseWriter, _ *http.Request) {
 	http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 }
 

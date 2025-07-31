@@ -1,6 +1,9 @@
 package config
 
-import "flag"
+import (
+	"flag"
+	"os"
+)
 
 type ServerConfig struct {
 	Addr string `yaml:"address" default:"localhost:8080"`
@@ -20,6 +23,11 @@ func Load() *Config {
 	flag.StringVar(&cfg.Server.Addr, "a", "localhost:8080", "адрес эндпоинта HTTP-сервера")
 
 	flag.Parse()
+
+	addressEnv := os.Getenv("ADDRESS")
+	if addressEnv != "" {
+		cfg.Server.Addr = addressEnv
+	}
 
 	return cfg
 }

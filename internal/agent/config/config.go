@@ -2,8 +2,16 @@ package config
 
 import (
 	"flag"
+	"log/slog"
+	"os"
 	"strconv"
 	"time"
+)
+
+const (
+	AddressEnvVarName        = "ADDRESS"
+	ReportIntervalEnvVarName = "REPORT_INTERVAL"
+	PollIntervalEnvVarName   = "POLL_INTERVAL"
 )
 
 type ServerConfig struct {
@@ -31,7 +39,30 @@ func Load() *Config {
 
 	flag.Parse()
 
+	loadEnv(cfg)
+
 	return cfg
+}
+
+func loadEnv(cfg *Config) {
+	addressEnv := os.Getenv(AddressEnvVarName)
+	if addressEnv != "" {
+		cfg.Server.Addr = addressEnv
+	}
+	reportIntervalEnv := os.Getenv(ReportIntervalEnvVarName)
+	if reportIntervalEnv != "" {
+		err := secondsToDuration(&cfg.ReportInterval)(reportIntervalEnv)
+		if err != nil {
+			slog.Error("couldn't get environment variable", slog.StringValue(ReportIntervalEnvVarName))
+		}
+	}
+	pollIntervalEnv := os.Getenv(PollIntervalEnvVarName)
+	if pollIntervalEnv != "" {
+		err := secondsToDuration(&cfg.PollInterval)(pollIntervalEnv)
+		if err != nil {
+			slog.Error("couldn't get environment variable", slog.StringValue(PollIntervalEnvVarName))
+		}
+	}
 }
 
 func secondsToDuration(interval *time.Duration) func(string) error {
