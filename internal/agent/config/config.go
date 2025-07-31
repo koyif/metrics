@@ -53,14 +53,14 @@ func loadEnv(cfg *Config) {
 	if reportIntervalEnv != "" {
 		err := secondsToDuration(&cfg.ReportInterval)(reportIntervalEnv)
 		if err != nil {
-			slog.Error("couldn't get environment variable", slog.StringValue(ReportIntervalEnvVarName))
+			slog.Error("couldn't get environment variable", slog.String("env variable", ReportIntervalEnvVarName))
 		}
 	}
 	pollIntervalEnv := os.Getenv(PollIntervalEnvVarName)
 	if pollIntervalEnv != "" {
 		err := secondsToDuration(&cfg.PollInterval)(pollIntervalEnv)
 		if err != nil {
-			slog.Error("couldn't get environment variable", slog.StringValue(PollIntervalEnvVarName))
+			slog.Error("couldn't get environment variable", slog.String("env variable", PollIntervalEnvVarName))
 		}
 	}
 }
