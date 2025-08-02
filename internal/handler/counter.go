@@ -2,9 +2,7 @@ package handler
 
 import (
 	"errors"
-	"fmt"
 	"github.com/koyif/metrics/internal/repository"
-	"log/slog"
 	"net/http"
 	"strconv"
 )
@@ -60,7 +58,6 @@ func (ch CountersPostHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		storeError(w, err)
 		return
 	}
-	slog.Debug(fmt.Sprintf("stored: %s: %d", metricName, metricValue))
 
 	w.WriteHeader(http.StatusOK)
 }

@@ -1,18 +1,20 @@
 package main
 
 import (
-	"fmt"
 	"github.com/koyif/metrics/internal/app"
+	"github.com/koyif/metrics/internal/app/logger"
 	"github.com/koyif/metrics/internal/config"
-	"log/slog"
 	"net/http"
 )
 
 func main() {
 	cfg := config.Load()
+	if err := logger.Initialize(); err != nil {
+		logger.Log.Fatal("error starting logger", logger.Error(err))
+	}
 
 	if err := run(cfg); err != nil {
-		slog.Error(fmt.Sprintf("error starting server %v", err))
+		logger.Log.Fatal("error starting server", logger.Error(err))
 	}
 }
 

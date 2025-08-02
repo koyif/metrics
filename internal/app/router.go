@@ -3,12 +3,14 @@ package app
 import (
 	"github.com/go-chi/chi/v5"
 	"github.com/koyif/metrics/internal/handler"
+	"github.com/koyif/metrics/internal/handler/middleware"
 	"github.com/koyif/metrics/internal/repository"
 	"github.com/koyif/metrics/internal/service"
 )
 
 func Router() *chi.Mux {
 	mux := chi.NewMux()
+	mux.Use(middleware.WithLogger)
 
 	metricsRepository := repository.NewMetricsRepository()
 

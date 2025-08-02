@@ -2,7 +2,6 @@ package handler
 
 import (
 	"html/template"
-	"log/slog"
 	"net/http"
 	"strconv"
 )
@@ -59,10 +58,6 @@ func (h *SummaryHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-
-	for k, v := range res {
-		slog.Info(k, " ", v)
-	}
 
 	if err = tt.Execute(w, res); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
