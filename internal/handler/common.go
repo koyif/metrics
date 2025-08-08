@@ -13,9 +13,9 @@ func UnknownMetricTypeHandler(w http.ResponseWriter, _ *http.Request) {
 	)
 }
 
-func storeError(w http.ResponseWriter, err error) {
+func StoreError(w http.ResponseWriter, err error) {
 	logger.Log.Warn(
-		"failed to store counter",
+		"failed to store metric",
 		logger.Error(err),
 	)
 	http.Error(
@@ -25,7 +25,7 @@ func storeError(w http.ResponseWriter, err error) {
 	)
 }
 
-func incorrectValueError(w http.ResponseWriter, value string) {
+func IncorrectValueError(w http.ResponseWriter, value string) {
 	logger.Log.Warn(
 		"incorrect value",
 		logger.String("value", value),
@@ -37,7 +37,7 @@ func incorrectValueError(w http.ResponseWriter, value string) {
 	)
 }
 
-func valueNotFoundError(w http.ResponseWriter, metricName string) {
+func ValueNotFoundError(w http.ResponseWriter, metricName string) {
 	logger.Log.Warn(
 		"value not found in storage",
 		logger.String("metricName", metricName),
@@ -49,9 +49,9 @@ func valueNotFoundError(w http.ResponseWriter, metricName string) {
 	)
 }
 
-func metricNameNotPresentError(w http.ResponseWriter, r *http.Request) {
+func MetricNameNotPresentError(w http.ResponseWriter, r *http.Request) {
 	logger.Log.Warn(
-		"metric name not found in the path",
+		"metric name not present",
 		logger.String("URI", r.RequestURI),
 	)
 	http.Error(
@@ -61,7 +61,7 @@ func metricNameNotPresentError(w http.ResponseWriter, r *http.Request) {
 	)
 }
 
-func invalidMethodError(w http.ResponseWriter, r *http.Request) {
+func InvalidMethodError(w http.ResponseWriter, r *http.Request) {
 	logger.Log.Warn(
 		"invalid method",
 		logger.String("URI", r.RequestURI),
@@ -71,5 +71,29 @@ func invalidMethodError(w http.ResponseWriter, r *http.Request) {
 		w,
 		http.StatusText(http.StatusMethodNotAllowed),
 		http.StatusMethodNotAllowed,
+	)
+}
+
+func IncorrectJsonFormatError(w http.ResponseWriter, r *http.Request) {
+	logger.Log.Warn(
+		"incorrect JSON format",
+		logger.String("URI", r.RequestURI),
+	)
+	http.Error(
+		w,
+		http.StatusText(http.StatusBadRequest),
+		http.StatusBadRequest,
+	)
+}
+
+func MarshallingError(w http.ResponseWriter, err error) {
+	logger.Log.Warn(
+		"error marshalling to JSON",
+		logger.Error(err),
+	)
+	http.Error(
+		w,
+		http.StatusText(http.StatusInternalServerError),
+		http.StatusInternalServerError,
 	)
 }

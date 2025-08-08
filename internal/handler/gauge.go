@@ -37,25 +37,25 @@ func NewGaugesGetHandler(service gaugeGetter) *GaugesGetHandler {
 
 func (h GaugesPostHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		invalidMethodError(w, r)
+		InvalidMethodError(w, r)
 		return
 	}
 
 	metricName := r.PathValue("metric")
 	value := r.PathValue("value")
 	if metricName == "" || value == "" {
-		metricNameNotPresentError(w, r)
+		MetricNameNotPresentError(w, r)
 		return
 	}
 
 	metricValue, err := strconv.ParseFloat(value, 64)
 	if err != nil {
-		incorrectValueError(w, value)
+		IncorrectValueError(w, value)
 		return
 	}
 
 	if err := h.service.StoreGauge(metricName, metricValue); err != nil {
-		storeError(w, err)
+		StoreError(w, err)
 		return
 	}
 
@@ -64,19 +64,19 @@ func (h GaugesPostHandler) Handle(w http.ResponseWriter, r *http.Request) {
 
 func (h GaugesGetHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		invalidMethodError(w, r)
+		InvalidMethodError(w, r)
 		return
 	}
 
 	metricName := r.PathValue("metric")
 	if metricName == "" {
-		metricNameNotPresentError(w, r)
+		MetricNameNotPresentError(w, r)
 		return
 	}
 
 	value, err := h.service.Gauge(metricName)
 	if err != nil && errors.Is(err, repository.ErrValueNotFound) {
-		valueNotFoundError(w, metricName)
+		ValueNotFoundError(w, metricName)
 		return
 	}
 

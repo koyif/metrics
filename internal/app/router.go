@@ -3,6 +3,7 @@ package app
 import (
 	"github.com/go-chi/chi/v5"
 	"github.com/koyif/metrics/internal/handler"
+	"github.com/koyif/metrics/internal/handler/metrics"
 	"github.com/koyif/metrics/internal/handler/middleware"
 	"github.com/koyif/metrics/internal/repository"
 	"github.com/koyif/metrics/internal/service"
@@ -24,6 +25,9 @@ func Router() *chi.Mux {
 	countersPostHandler := handler.NewCountersPostHandler(metricsService)
 	gaugesPostHandler := handler.NewGaugesPostHandler(metricsService)
 
+	getHandler := metrics.NewGetHandler(metricsService)
+	storeHandler := metrics.NewStoreHandler(metricsService)
+
 	mux.HandleFunc("/", summaryHandler.Handle)
 	mux.HandleFunc("/value/gauge/{metric}", gaugesGetHandler.Handle)
 	mux.HandleFunc("/value/counter/{metric}", countersGetHandler.Handle)
@@ -32,6 +36,9 @@ func Router() *chi.Mux {
 	mux.HandleFunc("/update/counter/", countersPostHandler.Handle)
 	mux.HandleFunc("/update/gauge/{metric}/{value}", gaugesPostHandler.Handle)
 	mux.HandleFunc("/update/gauge/", gaugesPostHandler.Handle)
+
+	mux.HandleFunc("/update", storeHandler.Handle)
+	mux.HandleFunc("/value", getHandler.Handle)
 
 	mux.HandleFunc("/update/{anything}/", handler.UnknownMetricTypeHandler)
 	mux.HandleFunc("/update/{anything}/{metric}/", handler.UnknownMetricTypeHandler)
