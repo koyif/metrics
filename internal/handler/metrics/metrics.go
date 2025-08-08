@@ -49,7 +49,7 @@ func (sh StoreHandler) Handle(w http.ResponseWriter, r *http.Request) {
 
 	err := json.NewDecoder(r.Body).Decode(&metrics)
 	if err != nil {
-		handler.IncorrectJsonFormatError(w, r)
+		handler.IncorrectJSONFormatError(w, r)
 		return
 	}
 
@@ -81,7 +81,7 @@ func (gh GetHandler) Handle(w http.ResponseWriter, r *http.Request) {
 
 	err := json.NewDecoder(r.Body).Decode(&metrics)
 	if err != nil {
-		handler.IncorrectJsonFormatError(w, r)
+		handler.IncorrectJSONFormatError(w, r)
 		return
 	}
 

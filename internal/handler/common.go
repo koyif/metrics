@@ -74,7 +74,7 @@ func InvalidMethodError(w http.ResponseWriter, r *http.Request) {
 	)
 }
 
-func IncorrectJsonFormatError(w http.ResponseWriter, r *http.Request) {
+func IncorrectJSONFormatError(w http.ResponseWriter, r *http.Request) {
 	logger.Log.Warn(
 		"incorrect JSON format",
 		logger.String("URI", r.RequestURI),
