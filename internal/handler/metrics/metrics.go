@@ -90,17 +90,22 @@ func (gh GetHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var valErr error
 	switch metrics.MType {
 	case "counter":
-		*metrics.Delta, err = gh.service.Counter(metrics.ID)
+		del, err := gh.service.Counter(metrics.ID)
+		valErr = err
+		metrics.Delta = &del
 	case "gauge":
-		*metrics.Value, err = gh.service.Gauge(metrics.ID)
+		val, err := gh.service.Gauge(metrics.ID)
+		valErr = err
+		metrics.Value = &val
 	default:
 		handler.UnknownMetricTypeHandler(w, r)
 		return
 	}
 
-	if err != nil && errors.Is(err, repository.ErrValueNotFound) {
+	if valErr != nil && errors.Is(valErr, repository.ErrValueNotFound) {
 		handler.ValueNotFoundError(w, metrics.ID)
 		return
 	}
