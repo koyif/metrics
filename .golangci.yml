@@ -100,5 +100,4 @@ formatters: # Форматтеры кода (проверка стиля)
       sections: # Порядок группировки импортов
         - Standard  # Стандартная библиотека
         - Default   # Сторонние зависимости
-        - Prefix(github.com/olezhek28/microservices-course-examples/week_1/grpc_with_interceptor)  # Локальные импорты проекта
       no-inline-comments: false  # Разрешить комментарии после импортов (true — запретит)

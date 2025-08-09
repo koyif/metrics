@@ -1,5 +1,10 @@
 package dto
 
+const (
+	CounterMetricsType = "counter"
+	GaugeMetricsType   = "gauge"
+)
+
 type Metrics struct {
 	ID    string   `json:"id"`
 	MType string   `json:"type"`

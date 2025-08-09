@@ -84,13 +84,13 @@ func (c *MetricsClient) sendMetric(metrics dto.Metrics) error {
 
 func addValue(metrics *dto.Metrics, value string) error {
 	switch metrics.MType {
-	case "counter":
+	case dto.CounterMetricsType:
 		del, err := strconv.ParseInt(value, 10, 64)
 		if err != nil {
 			return err
 		}
 		(*metrics).Delta = &del
-	case "gauge":
+	case dto.GaugeMetricsType:
 		val, err := strconv.ParseFloat(value, 64)
 		if err != nil {
 			return err

@@ -59,9 +59,9 @@ func (sh StoreHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	switch metrics.MType {
-	case "counter":
+	case dto.CounterMetricsType:
 		sh.handleCounter(w, metrics.ID, metrics.Delta)
-	case "gauge":
+	case dto.GaugeMetricsType:
 		sh.handleGauge(w, metrics.ID, metrics.Value)
 	default:
 		handler.UnknownMetricTypeHandler(w, r)
@@ -92,11 +92,11 @@ func (gh GetHandler) Handle(w http.ResponseWriter, r *http.Request) {
 
 	var valErr error
 	switch metrics.MType {
-	case "counter":
+	case dto.CounterMetricsType:
 		del, err := gh.service.Counter(metrics.ID)
 		valErr = err
 		metrics.Delta = &del
-	case "gauge":
+	case dto.GaugeMetricsType:
 		val, err := gh.service.Gauge(metrics.ID)
 		valErr = err
 		metrics.Value = &val
