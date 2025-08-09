@@ -12,6 +12,7 @@ import (
 func Router() *chi.Mux {
 	mux := chi.NewMux()
 	mux.Use(middleware.WithLogger)
+	mux.Use(middleware.WithGzip)
 
 	metricsRepository := repository.NewMetricsRepository()
 

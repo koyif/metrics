@@ -34,8 +34,8 @@ func (MockMetricsRepository) StoreGauge(metricName string, value float64) error 
 
 func TestStoreHandler_Handle(t *testing.T) {
 	var (
-		delta int64   = 100
-		value float64 = 100.0
+		delta int64 = 100
+		value       = 100.0
 	)
 	type given struct {
 	}
