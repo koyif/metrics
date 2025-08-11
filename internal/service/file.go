@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
@@ -54,11 +53,11 @@ func (s *FileService) Restore() error {
 	for _, metric := range metrics {
 		switch metric.MType {
 		case models.Gauge:
-			return s.metricsRepository.StoreGauge(metric.ID, *metric.Value)
+			s.metricsRepository.StoreGauge(metric.ID, *metric.Value)
 		case models.Counter:
-			return s.metricsRepository.StoreCounter(metric.ID, *metric.Delta)
+			s.metricsRepository.StoreCounter(metric.ID, *metric.Delta)
 		default:
-			return fmt.Errorf("unknown metric type: %s", metric.MType)
+			logger.Log.Warn("unknown metric type", logger.String("metricType", metric.MType))
 		}
 	}
 	return nil
