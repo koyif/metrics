@@ -9,14 +9,24 @@ type metricsRepository interface {
 	AllGauges() map[string]float64
 }
 
-type MetricsService struct {
-	repository metricsRepository
+type fileService interface {
+	Persist() error
 }
 
-func NewMetricsService(repository metricsRepository) *MetricsService {
+type MetricsService struct {
+	repository  metricsRepository
+	fileService fileService
+}
+
+func NewMetricsService(repository metricsRepository, fileService fileService) *MetricsService {
 	return &MetricsService{
-		repository: repository,
+		repository:  repository,
+		fileService: fileService,
 	}
+}
+
+func (m MetricsService) Persist() error {
+	return m.fileService.Persist()
 }
 
 func (m MetricsService) StoreGauge(metricName string, value float64) error {

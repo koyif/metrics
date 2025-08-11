@@ -4,20 +4,23 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/koyif/metrics/pkg/dto"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"testing"
+
+	"github.com/koyif/metrics/internal/config"
+	"github.com/koyif/metrics/pkg/dto"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const failingMetricsName = "failingMetrics"
 
 type MockMetricsRepository struct{}
+type MockFileService struct{}
 
 func (MockMetricsRepository) StoreCounter(metricName string, value int64) error {
 	if metricName == failingMetricsName {
@@ -29,6 +32,9 @@ func (MockMetricsRepository) StoreGauge(metricName string, value float64) error 
 	if metricName == failingMetricsName {
 		return fmt.Errorf("store error: %s", failingMetricsName)
 	}
+	return nil
+}
+func (MockMetricsRepository) Persist() error {
 	return nil
 }
 
@@ -162,7 +168,7 @@ func TestStoreHandler_Handle(t *testing.T) {
 		},
 	}
 
-	handler := NewStoreHandler(MockMetricsRepository{})
+	handler := NewStoreHandler(MockMetricsRepository{}, config.Load())
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/update", handler.Handle)

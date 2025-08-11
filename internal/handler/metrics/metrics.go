@@ -3,15 +3,19 @@ package metrics
 import (
 	"encoding/json"
 	"errors"
+
+	"net/http"
+
+	"github.com/koyif/metrics/internal/config"
 	"github.com/koyif/metrics/internal/handler"
 	"github.com/koyif/metrics/internal/repository"
 	"github.com/koyif/metrics/pkg/dto"
-	"net/http"
 )
 
 type metricsStorer interface {
 	StoreCounter(metricName string, value int64) error
 	StoreGauge(metricName string, value float64) error
+	Persist() error
 }
 
 type metricsGetter interface {
@@ -21,15 +25,17 @@ type metricsGetter interface {
 
 type StoreHandler struct {
 	service metricsStorer
+	cfg     *config.Config
 }
 
 type GetHandler struct {
 	service metricsGetter
 }
 
-func NewStoreHandler(service metricsStorer) *StoreHandler {
+func NewStoreHandler(service metricsStorer, cfg *config.Config) *StoreHandler {
 	return &StoreHandler{
 		service: service,
+		cfg:     cfg,
 	}
 }
 
@@ -66,6 +72,10 @@ func (sh StoreHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	default:
 		handler.UnknownMetricTypeHandler(w, r)
 		return
+	}
+
+	if sh.cfg.Storage.StoreInterval == 0 {
+		sh.service.Persist()
 	}
 
 	w.WriteHeader(http.StatusOK)

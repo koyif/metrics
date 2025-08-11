@@ -1,10 +1,11 @@
 package main
 
 import (
+	"net/http"
+
 	"github.com/koyif/metrics/internal/app"
 	"github.com/koyif/metrics/internal/app/logger"
 	"github.com/koyif/metrics/internal/config"
-	"net/http"
 )
 
 func main() {
@@ -19,5 +20,5 @@ func main() {
 }
 
 func run(cfg *config.Config) error {
-	return http.ListenAndServe(cfg.Server.Addr, app.Router())
+	return http.ListenAndServe(cfg.Server.Addr, app.Router(cfg))
 }

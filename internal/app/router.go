@@ -2,6 +2,7 @@ package app
 
 import (
 	"github.com/go-chi/chi/v5"
+	"github.com/koyif/metrics/internal/config"
 	"github.com/koyif/metrics/internal/handler"
 	"github.com/koyif/metrics/internal/handler/metrics"
 	"github.com/koyif/metrics/internal/handler/middleware"
@@ -9,14 +10,21 @@ import (
 	"github.com/koyif/metrics/internal/service"
 )
 
-func Router() *chi.Mux {
+func Router(cfg *config.Config) *chi.Mux {
 	mux := chi.NewMux()
 	mux.Use(middleware.WithLogger)
 	mux.Use(middleware.WithGzip)
 
+	fileRepository := repository.NewFileRepository(cfg.Storage.FileStoragePath)
 	metricsRepository := repository.NewMetricsRepository()
+	fileService := service.NewFileService(fileRepository, metricsRepository)
+	fileService.SchedulePersist(cfg.Storage.StoreInterval)
 
-	metricsService := service.NewMetricsService(metricsRepository)
+	if cfg.Storage.Restore {
+		fileService.Restore()
+	}
+
+	metricsService := service.NewMetricsService(metricsRepository, fileService)
 
 	summaryHandler := handler.NewSummaryHandler(metricsService)
 
@@ -27,7 +35,7 @@ func Router() *chi.Mux {
 	gaugesPostHandler := handler.NewGaugesPostHandler(metricsService)
 
 	getHandler := metrics.NewGetHandler(metricsService)
-	storeHandler := metrics.NewStoreHandler(metricsService)
+	storeHandler := metrics.NewStoreHandler(metricsService, cfg)
 
 	mux.HandleFunc("/", summaryHandler.Handle)
 	mux.HandleFunc("/value/gauge/{metric}", gaugesGetHandler.Handle)
