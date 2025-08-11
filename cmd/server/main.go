@@ -1,14 +1,15 @@
 package main
 
 import (
-	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
-
+	"context"
+	"errors"
 	"github.com/koyif/metrics/internal/app"
 	"github.com/koyif/metrics/internal/app/logger"
 	"github.com/koyif/metrics/internal/config"
+	"net/http"
+	"os/signal"
+	"sync"
+	"syscall"
 )
 
 func main() {
@@ -17,32 +18,26 @@ func main() {
 		logger.Log.Fatal("error starting logger", logger.Error(err))
 	}
 
-	application := app.New(cfg)
+	wg := sync.WaitGroup{}
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
 
-	if err := run(application); err != nil {
-		logger.Log.Fatal("error starting server", logger.Error(err))
+	if cfg.Storage.StoreInterval != 0 {
+		wg.Add(1)
 	}
+
+	application := app.New(ctx, &wg, cfg)
+
+	go startServer(application)
+
+	<-ctx.Done()
+	logger.Log.Info("shutting down")
+	wg.Wait()
 }
 
-func run(a *app.App) error {
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, syscall.SIGTERM, syscall.SIGINT)
-
-	go func() {
-		logger.Log.Info("starting server", logger.String("address", a.Config.Server.Addr))
-		err := http.ListenAndServe(a.Config.Server.Addr, a.Router())
-		if err != nil {
-			logger.Log.Fatal("error starting server", logger.Error(err))
-			stop <- syscall.SIGTERM
-		}
-	}()
-
-	<-stop
-	logger.Log.Info("shutting down")
-	err := a.MetricsService.Persist()
-	if err != nil {
-		return err
+func startServer(a *app.App) {
+	logger.Log.Info("starting server", logger.String("address", a.Config.Server.Addr))
+	if err := http.ListenAndServe(a.Config.Server.Addr, a.Router()); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		logger.Log.Error("server error", logger.Error(err))
 	}
-
-	return nil
 }

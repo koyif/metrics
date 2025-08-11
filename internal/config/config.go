@@ -2,7 +2,6 @@ package config
 
 import (
 	"flag"
-	"github.com/koyif/metrics/internal/app/logger"
 	"os"
 	"strconv"
 	"time"
@@ -42,52 +41,45 @@ func Load() *Config {
 
 	flag.Parse()
 
-	getEnv(cfg)
+	getEnvString("ADDRESS", &cfg.Server.Addr)
+	getEnvInt("STORE_INTERVAL", &cfg.Storage.StoreInterval, time.Second)
+	getEnvBool("RESTORE", &cfg.Storage.Restore)
+	getEnvString("FILE_STORAGE_PATH", &cfg.Storage.FileStoragePath)
 
 	return cfg
 }
 
-func getEnv(cfg *Config) {
-
-	addressEnv := os.Getenv("ADDRESS")
-	if addressEnv != "" {
-		cfg.Server.Addr = addressEnv
+func getEnvString(envKey string, target *string) {
+	if value := os.Getenv(envKey); value != "" {
+		*target = value
 	}
+}
 
-	restoreEnv := os.Getenv("RESTORE")
-	if restoreEnv != "" {
-		restore, err := strconv.ParseBool(restoreEnv)
-		if err != nil {
-			logger.Log.Error("couldn't get environment variable", logger.String("env variable", "RESTORE"))
-		} else {
-			cfg.Storage.Restore = restore
+func getEnvBool(envKey string, target *bool) {
+	if value := os.Getenv(envKey); value != "" {
+		if boolVal, err := strconv.ParseBool(value); err == nil {
+			*target = boolVal
 		}
 	}
+}
 
-	storeIntervalEnv := os.Getenv("STORE_INTERVAL")
-	if storeIntervalEnv != "" {
-		storeInterval, err := strconv.ParseInt(storeIntervalEnv, 10, 64)
-		if err != nil {
-			logger.Log.Error("couldn't get environment variable", logger.String("env variable", "STORE_INTERVAL"))
-		} else {
-			cfg.Storage.StoreInterval = time.Duration(storeInterval) * time.Second
+func getEnvInt(envKey string, target *time.Duration, multiplier time.Duration) {
+	if value := os.Getenv(envKey); value != "" {
+		if intVal, err := strconv.ParseInt(value, 10, 64); err == nil {
+			*target = time.Duration(intVal) * multiplier
 		}
-	}
-
-	fileStoragePathEnv := os.Getenv("FILE_STORAGE_PATH")
-	if fileStoragePathEnv != "" {
-		cfg.Storage.FileStoragePath = fileStoragePathEnv
 	}
 }
 
 func secondsToDuration(interval *time.Duration) func(string) error {
 	return func(s string) error {
-		sec, err := strconv.Atoi(s)
-		if err != nil {
+		if sec, err := strconv.Atoi(s); err != nil {
 			return err
+		} else if sec < 0 {
+			return nil
+		} else {
+			*interval = time.Duration(sec) * time.Second
 		}
-
-		*interval = time.Duration(sec) * time.Second
 
 		return nil
 	}

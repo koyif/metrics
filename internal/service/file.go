@@ -1,7 +1,9 @@
 package service
 
 import (
+	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/koyif/metrics/internal/app/logger"
@@ -52,9 +54,9 @@ func (s *FileService) Restore() error {
 	for _, metric := range metrics {
 		switch metric.MType {
 		case models.Gauge:
-			s.metricsRepository.StoreGauge(metric.ID, *metric.Value)
+			return s.metricsRepository.StoreGauge(metric.ID, *metric.Value)
 		case models.Counter:
-			s.metricsRepository.StoreCounter(metric.ID, *metric.Delta)
+			return s.metricsRepository.StoreCounter(metric.ID, *metric.Delta)
 		default:
 			return fmt.Errorf("unknown metric type: %s", metric.MType)
 		}
@@ -62,7 +64,7 @@ func (s *FileService) Restore() error {
 	return nil
 }
 
-func (s *FileService) SchedulePersist(interval time.Duration) {
+func (s *FileService) SchedulePersist(ctx context.Context, wg *sync.WaitGroup, interval time.Duration) {
 	if interval == 0 {
 		return
 	}
@@ -71,12 +73,23 @@ func (s *FileService) SchedulePersist(interval time.Duration) {
 
 	go func() {
 		ticker := time.NewTicker(interval)
+		defer wg.Done()
 		defer ticker.Stop()
 
-		for range ticker.C {
-			if err := s.Persist(); err != nil {
-				logger.Log.Error("error persisting metrics", logger.Error(err))
+		for {
+			select {
+			case <-ctx.Done():
+				s.persist()
+				return
+			case <-ticker.C:
+				s.persist()
 			}
 		}
 	}()
+}
+
+func (s *FileService) persist() {
+	if err := s.Persist(); err != nil {
+		logger.Log.Error("error persisting metrics", logger.Error(err))
+	}
 }
