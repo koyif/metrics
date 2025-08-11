@@ -1,6 +1,7 @@
 package app
 
 import (
+	"github.com/koyif/metrics/internal/app/logger"
 	"github.com/koyif/metrics/internal/config"
 	"github.com/koyif/metrics/internal/repository"
 	"github.com/koyif/metrics/internal/service"
@@ -20,7 +21,7 @@ func New(cfg *config.Config) *App {
 	if cfg.Storage.Restore {
 		err := fileService.Restore()
 		if err != nil {
-			return nil
+			logger.Log.Error("error restoring metrics", logger.Error(err))
 		}
 	}
 

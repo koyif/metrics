@@ -2,6 +2,7 @@ package repository
 
 import (
 	"encoding/json"
+	"github.com/koyif/metrics/internal/app/logger"
 	"os"
 
 	models "github.com/koyif/metrics/internal/model"
@@ -37,7 +38,12 @@ func (r *FileRepository) Load() ([]models.Metrics, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			logger.Log.Error("error closing file", logger.Error(err))
+		}
+	}(file)
 
 	var metrics []models.Metrics
 	if err := json.NewDecoder(file).Decode(&metrics); err != nil {
