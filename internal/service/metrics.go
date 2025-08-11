@@ -1,5 +1,7 @@
 package service
 
+import "github.com/koyif/metrics/internal/app/logger"
+
 type metricsRepository interface {
 	StoreCounter(metricName string, value int64) error
 	Counter(metricName string) (int64, error)
@@ -26,6 +28,7 @@ func NewMetricsService(repository metricsRepository, fileService fileService) *M
 }
 
 func (m MetricsService) Persist() error {
+	logger.Log.Info("persisting metrics")
 	return m.fileService.Persist()
 }
 
