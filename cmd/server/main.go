@@ -29,6 +29,7 @@ func run(a *app.App) error {
 	signal.Notify(stop, syscall.SIGTERM, syscall.SIGINT)
 
 	go func() {
+		logger.Log.Info("starting server", logger.String("address", a.Config.Server.Addr))
 		err := http.ListenAndServe(a.Config.Server.Addr, a.Router())
 		if err != nil {
 			logger.Log.Fatal("error starting server", logger.Error(err))

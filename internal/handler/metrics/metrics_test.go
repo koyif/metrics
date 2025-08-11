@@ -20,7 +20,6 @@ import (
 const failingMetricsName = "failingMetrics"
 
 type MockMetricsRepository struct{}
-type MockFileService struct{}
 
 func (MockMetricsRepository) StoreCounter(metricName string, value int64) error {
 	if metricName == failingMetricsName {
