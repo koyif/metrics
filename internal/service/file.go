@@ -22,6 +22,8 @@ func NewFileService(fileRepository *repository.FileRepository, metricsRepository
 }
 
 func (s *FileService) Persist() error {
+	logger.Log.Info("persisting metrics")
+
 	metrics := make([]models.Metrics, 0)
 	for metricName, value := range s.metricsRepository.AllGauges() {
 		metrics = append(metrics, models.Metrics{
@@ -37,6 +39,7 @@ func (s *FileService) Persist() error {
 			Delta: &value,
 		})
 	}
+
 	return s.fileRepository.Save(metrics)
 }
 

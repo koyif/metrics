@@ -2,6 +2,7 @@ package config
 
 import (
 	"flag"
+	"github.com/koyif/metrics/internal/app/logger"
 	"os"
 	"strconv"
 	"time"
@@ -41,12 +42,42 @@ func Load() *Config {
 
 	flag.Parse()
 
+	getEnv(cfg)
+
+	return cfg
+}
+
+func getEnv(cfg *Config) {
+
 	addressEnv := os.Getenv("ADDRESS")
 	if addressEnv != "" {
 		cfg.Server.Addr = addressEnv
 	}
 
-	return cfg
+	restoreEnv := os.Getenv("RESTORE")
+	if restoreEnv != "" {
+		restore, err := strconv.ParseBool(restoreEnv)
+		if err != nil {
+			logger.Log.Error("couldn't get environment variable", logger.String("env variable", "RESTORE"))
+		} else {
+			cfg.Storage.Restore = restore
+		}
+	}
+
+	storeIntervalEnv := os.Getenv("STORE_INTERVAL")
+	if storeIntervalEnv != "" {
+		storeInterval, err := strconv.ParseInt(storeIntervalEnv, 10, 64)
+		if err != nil {
+			logger.Log.Error("couldn't get environment variable", logger.String("env variable", "STORE_INTERVAL"))
+		} else {
+			cfg.Storage.StoreInterval = time.Duration(storeInterval) * time.Second
+		}
+	}
+
+	fileStoragePathEnv := os.Getenv("FILE_STORAGE_PATH")
+	if fileStoragePathEnv != "" {
+		cfg.Storage.FileStoragePath = fileStoragePathEnv
+	}
 }
 
 func secondsToDuration(interval *time.Duration) func(string) error {
