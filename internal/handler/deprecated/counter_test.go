@@ -1,7 +1,8 @@
-package handler
+package deprecated
 
 import (
 	"fmt"
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -12,13 +13,13 @@ import (
 	"testing"
 )
 
-type MockGaugesRepository struct{}
+type MockCountersRepository struct{}
 
-func (MockGaugesRepository) StoreGauge(metricName string, value float64) error {
+func (MockCountersRepository) StoreCounter(metricName string, value int64) error {
 	return nil
 }
 
-func TestGaugesHandler_Handle(t *testing.T) {
+func TestCountersHandler_Handle(t *testing.T) {
 	type when struct {
 		method string
 		path   string
@@ -38,9 +39,9 @@ func TestGaugesHandler_Handle(t *testing.T) {
 			name: "OK",
 			when: when{
 				method: http.MethodPost,
-				path:   "/update/gauge",
-				metric: "gauge",
-				value:  "123.123",
+				path:   "/update/counter",
+				metric: "counter",
+				value:  "1",
 			},
 			want: want{
 				status: http.StatusOK,
@@ -50,8 +51,8 @@ func TestGaugesHandler_Handle(t *testing.T) {
 			name: "no metric name",
 			when: when{
 				method: http.MethodPost,
-				path:   "/update/gauge",
-				value:  "123.123",
+				path:   "/update/counter",
+				value:  "1",
 			},
 			want: want{
 				status: http.StatusNotFound,
@@ -61,9 +62,9 @@ func TestGaugesHandler_Handle(t *testing.T) {
 			name: "invalid http method PUT",
 			when: when{
 				method: http.MethodPut,
-				path:   "/update/gauge",
-				metric: "gauge",
-				value:  "123.123",
+				path:   "/update/counter",
+				metric: "counter",
+				value:  "1",
 			},
 			want: want{
 				status: http.StatusMethodNotAllowed,
@@ -73,9 +74,9 @@ func TestGaugesHandler_Handle(t *testing.T) {
 			name: "invalid http method GET",
 			when: when{
 				method: http.MethodGet,
-				path:   "/update/gauge",
-				metric: "gauge",
-				value:  "123.123",
+				path:   "/update/counter",
+				metric: "counter",
+				value:  "1",
 			},
 			want: want{
 				status: http.StatusMethodNotAllowed,
@@ -85,19 +86,31 @@ func TestGaugesHandler_Handle(t *testing.T) {
 			name: "no value",
 			when: when{
 				method: http.MethodPost,
-				path:   "/update/gauge",
-				metric: "gauge",
+				path:   "/update/counter",
+				metric: "counter",
 			},
 			want: want{
 				status: http.StatusNotFound,
 			},
 		},
 		{
+			name: "invalid value float",
+			when: when{
+				method: http.MethodPost,
+				path:   "/update/counter",
+				metric: "counter",
+				value:  "1.1",
+			},
+			want: want{
+				status: http.StatusBadRequest,
+			},
+		},
+		{
 			name: "invalid value string",
 			when: when{
 				method: http.MethodPost,
-				path:   "/update/gauge",
-				metric: "gauge",
+				path:   "/update/counter",
+				metric: "counter",
 				value:  "string",
 			},
 			want: want{
@@ -106,13 +119,12 @@ func TestGaugesHandler_Handle(t *testing.T) {
 		},
 	}
 
-	handler := NewGaugesPostHandler(MockGaugesRepository{})
-	mux := http.NewServeMux()
-	mux.HandleFunc("/update/gauge/{metric}/{value}", handler.Handle)
-	mux.HandleFunc("/update/gauge/{metric}", handler.Handle)
-	mux.HandleFunc("/update/gauge", handler.Handle)
+	handler := NewCountersPostHandler(MockCountersRepository{})
 
-	server := httptest.NewServer(mux)
+	r := chi.NewRouter()
+	r.Post("/update/counter/{metric}/{value}", handler.Handle)
+
+	server := httptest.NewServer(r)
 	defer server.Close()
 
 	baseURL, err := url.Parse(server.URL)
@@ -138,6 +150,7 @@ func TestGaugesHandler_Handle(t *testing.T) {
 					return
 				}
 			}
+
 			require.NoError(t, err)
 
 			defer func(Body io.ReadCloser) {
