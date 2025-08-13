@@ -19,10 +19,12 @@ func (app *App) Router() *chi.Mux {
 		r.Post("/", metrics.NewGetHandler(app.MetricsService).Handle)
 
 		r.Route("/counter", func(r chi.Router) {
+			r.NotFound(handler.MetricNotFound)
 			r.Get("/{metric}", deprecated.NewCountersGetHandler(app.MetricsService).Handle)
 		})
 
 		r.Route("/gauge", func(r chi.Router) {
+			r.NotFound(handler.MetricNotFound)
 			r.Get("/{metric}", deprecated.NewGaugesGetHandler(app.MetricsService).Handle)
 		})
 	})
@@ -31,10 +33,12 @@ func (app *App) Router() *chi.Mux {
 		r.Post("/", metrics.NewStoreHandler(app.MetricsService, app.Config).Handle)
 
 		r.Route("/counter", func(r chi.Router) {
+			r.NotFound(handler.MetricNotFound)
 			r.Post("/{metric}/{value}", deprecated.NewCountersPostHandler(app.MetricsService).Handle)
 		})
 
 		r.Route("/gauge", func(r chi.Router) {
+			r.NotFound(handler.MetricNotFound)
 			r.Post("/{metric}/{value}", deprecated.NewGaugesPostHandler(app.MetricsService).Handle)
 		})
 	})
