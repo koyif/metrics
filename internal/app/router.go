@@ -3,38 +3,43 @@ package app
 import (
 	"github.com/go-chi/chi/v5"
 	"github.com/koyif/metrics/internal/handler"
+	"github.com/koyif/metrics/internal/handler/deprecated"
 	"github.com/koyif/metrics/internal/handler/metrics"
 	"github.com/koyif/metrics/internal/handler/middleware"
 )
 
 func (app *App) Router() *chi.Mux {
-	mux := chi.NewMux()
-	mux.Use(middleware.WithLogger)
-	mux.Use(middleware.WithGzip)
+	r := chi.NewRouter()
+	r.Use(middleware.WithLogger)
+	r.Use(middleware.WithGzip)
 
-	mux.HandleFunc("/", handler.NewSummaryHandler(app.MetricsService).Handle)
-	mux.HandleFunc("/value/gauge/{metric}", handler.NewGaugesGetHandler(app.MetricsService).Handle)
-	mux.HandleFunc("/value/counter/{metric}", handler.NewCountersGetHandler(app.MetricsService).Handle)
+	r.Get("/", metrics.NewSummaryHandler(app.MetricsService).Handle)
 
-	countersPostHandler := handler.NewCountersPostHandler(app.MetricsService)
-	mux.HandleFunc("/update/counter/{metric}/{value}", countersPostHandler.Handle)
-	mux.HandleFunc("/update/counter/", countersPostHandler.Handle)
+	r.Route("/value", func(r chi.Router) {
+		r.Post("/", metrics.NewGetHandler(app.MetricsService).Handle)
 
-	gaugesPostHandler := handler.NewGaugesPostHandler(app.MetricsService)
-	mux.HandleFunc("/update/gauge/{metric}/{value}", gaugesPostHandler.Handle)
-	mux.HandleFunc("/update/gauge/", gaugesPostHandler.Handle)
+		r.Route("/counter", func(r chi.Router) {
+			r.Get("/{metric}", deprecated.NewCountersGetHandler(app.MetricsService).Handle)
+		})
 
-	storeHandler := metrics.NewStoreHandler(app.MetricsService, app.Config)
-	mux.HandleFunc("/update", storeHandler.Handle)
-	mux.HandleFunc("/update/", storeHandler.Handle)
+		r.Route("/gauge", func(r chi.Router) {
+			r.Get("/{metric}", deprecated.NewGaugesGetHandler(app.MetricsService).Handle)
+		})
+	})
 
-	getHandler := metrics.NewGetHandler(app.MetricsService)
-	mux.HandleFunc("/value", getHandler.Handle)
-	mux.HandleFunc("/value/", getHandler.Handle)
+	r.Route("/update", func(r chi.Router) {
+		r.Post("/", metrics.NewStoreHandler(app.MetricsService, app.Config).Handle)
 
-	mux.HandleFunc("/update/{anything}/", handler.UnknownMetricTypeHandler)
-	mux.HandleFunc("/update/{anything}/{metric}/", handler.UnknownMetricTypeHandler)
-	mux.HandleFunc("/update/{anything}/{metric}/{value}", handler.UnknownMetricTypeHandler)
+		r.Route("/counter", func(r chi.Router) {
+			r.Post("/{metric}/{value}", deprecated.NewCountersPostHandler(app.MetricsService).Handle)
+		})
 
-	return mux
+		r.Route("/gauge", func(r chi.Router) {
+			r.Post("/{metric}/{value}", deprecated.NewGaugesPostHandler(app.MetricsService).Handle)
+		})
+	})
+
+	r.NotFound(handler.UnknownMetricTypeHandler)
+
+	return r
 }
