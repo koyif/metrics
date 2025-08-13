@@ -121,7 +121,7 @@ func (gh GetHandler) Handle(w http.ResponseWriter, r *http.Request) {
 
 func (sh StoreHandler) handleCounter(w http.ResponseWriter, metricName string, value *int64) {
 	if value == nil {
-		handler.BadRequest(w, "", fmt.Sprintf("incorrect value format: nil"))
+		handler.BadRequest(w, "", "incorrect value format: nil")
 		return
 	}
 
@@ -134,7 +134,7 @@ func (sh StoreHandler) handleCounter(w http.ResponseWriter, metricName string, v
 
 func (sh StoreHandler) handleGauge(w http.ResponseWriter, metricName string, value *float64) {
 	if value == nil {
-		handler.BadRequest(w, "", fmt.Sprintf("incorrect value format: nil"))
+		handler.BadRequest(w, "", "incorrect value format: nil")
 		return
 	}
 
