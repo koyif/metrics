@@ -6,7 +6,7 @@ import (
 )
 
 func UnknownMetricTypeHandler(w http.ResponseWriter, r *http.Request) {
-	BadRequest(w, r.RequestURI, "unknown metric type")
+	NotFound(w, r, "unknown metric type")
 }
 
 func InternalServerError(w http.ResponseWriter, err error, m string) {
