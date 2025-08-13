@@ -3,33 +3,34 @@ package app
 import (
 	"github.com/go-chi/chi/v5"
 	"github.com/koyif/metrics/internal/handler"
-	"github.com/koyif/metrics/internal/repository"
-	"github.com/koyif/metrics/internal/service"
+	"github.com/koyif/metrics/internal/handler/metrics"
+	"github.com/koyif/metrics/internal/handler/middleware"
 )
 
-func Router() *chi.Mux {
+func (app *App) Router() *chi.Mux {
 	mux := chi.NewMux()
+	mux.Use(middleware.WithLogger)
+	mux.Use(middleware.WithGzip)
 
-	metricsRepository := repository.NewMetricsRepository()
+	mux.HandleFunc("/", handler.NewSummaryHandler(app.MetricsService).Handle)
+	mux.HandleFunc("/value/gauge/{metric}", handler.NewGaugesGetHandler(app.MetricsService).Handle)
+	mux.HandleFunc("/value/counter/{metric}", handler.NewCountersGetHandler(app.MetricsService).Handle)
 
-	metricsService := service.NewMetricsService(metricsRepository)
-
-	summaryHandler := handler.NewSummaryHandler(metricsService)
-
-	gaugesGetHandler := handler.NewGaugesGetHandler(metricsService)
-	countersGetHandler := handler.NewCountersGetHandler(metricsService)
-
-	countersPostHandler := handler.NewCountersPostHandler(metricsService)
-	gaugesPostHandler := handler.NewGaugesPostHandler(metricsService)
-
-	mux.HandleFunc("/", summaryHandler.Handle)
-	mux.HandleFunc("/value/gauge/{metric}", gaugesGetHandler.Handle)
-	mux.HandleFunc("/value/counter/{metric}", countersGetHandler.Handle)
-
+	countersPostHandler := handler.NewCountersPostHandler(app.MetricsService)
 	mux.HandleFunc("/update/counter/{metric}/{value}", countersPostHandler.Handle)
 	mux.HandleFunc("/update/counter/", countersPostHandler.Handle)
+
+	gaugesPostHandler := handler.NewGaugesPostHandler(app.MetricsService)
 	mux.HandleFunc("/update/gauge/{metric}/{value}", gaugesPostHandler.Handle)
 	mux.HandleFunc("/update/gauge/", gaugesPostHandler.Handle)
+
+	storeHandler := metrics.NewStoreHandler(app.MetricsService, app.Config)
+	mux.HandleFunc("/update", storeHandler.Handle)
+	mux.HandleFunc("/update/", storeHandler.Handle)
+
+	getHandler := metrics.NewGetHandler(app.MetricsService)
+	mux.HandleFunc("/value", getHandler.Handle)
+	mux.HandleFunc("/value/", getHandler.Handle)
 
 	mux.HandleFunc("/update/{anything}/", handler.UnknownMetricTypeHandler)
 	mux.HandleFunc("/update/{anything}/{metric}/", handler.UnknownMetricTypeHandler)
