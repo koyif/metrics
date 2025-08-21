@@ -3,18 +3,21 @@ package app
 import (
 	"context"
 	"errors"
-	"github.com/koyif/metrics/internal/app/logger"
-	"github.com/koyif/metrics/internal/config"
-	"github.com/koyif/metrics/internal/repository"
-	"github.com/koyif/metrics/internal/service"
 	"io"
 	"sync"
+
+	"github.com/koyif/metrics/internal/app/logger"
+	"github.com/koyif/metrics/internal/config"
+	"github.com/koyif/metrics/internal/persistence/database"
+	"github.com/koyif/metrics/internal/repository"
+	"github.com/koyif/metrics/internal/service"
+	"github.com/koyif/metrics/internal/service/ping"
 )
 
 type App struct {
 	Config         *config.Config
 	MetricsService *service.MetricsService
-	Context        context.Context
+	PingService    *ping.Service
 }
 
 func New(ctx context.Context, wg *sync.WaitGroup, cfg *config.Config) *App {
@@ -31,9 +34,12 @@ func New(ctx context.Context, wg *sync.WaitGroup, cfg *config.Config) *App {
 
 	metricsService := service.NewMetricsService(metricsRepository, fileService)
 
+	db := database.New(ctx, cfg.Storage.DatabaseURL)
+	pingService := ping.NewService(db)
+
 	return &App{
 		Config:         cfg,
 		MetricsService: metricsService,
-		Context:        ctx,
+		PingService:    pingService,
 	}
 }

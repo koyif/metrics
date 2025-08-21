@@ -5,11 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log/slog"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/koyif/metrics/internal/config"
 	"github.com/koyif/metrics/pkg/dto"
@@ -19,46 +22,157 @@ import (
 
 const failingMetricsName = "failingMetrics"
 
-type MockMetricsRepository struct{}
+type MockMetricsRepository struct {
+	mu                sync.Mutex
+	counterCalls      []CounterCall
+	gaugeCalls        []GaugeCall
+	persistCalls      int
+	shouldFailPersist bool
+}
 
-func (MockMetricsRepository) StoreCounter(metricName string, value int64) error {
+type CounterCall struct {
+	MetricName string
+	Value      int64
+}
+
+type GaugeCall struct {
+	MetricName string
+	Value      float64
+}
+
+func NewMockMetricsRepository() *MockMetricsRepository {
+	return &MockMetricsRepository{
+		counterCalls: make([]CounterCall, 0),
+		gaugeCalls:   make([]GaugeCall, 0),
+	}
+}
+
+func (m *MockMetricsRepository) StoreCounter(metricName string, value int64) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.counterCalls = append(m.counterCalls, CounterCall{
+		MetricName: metricName,
+		Value:      value,
+	})
+
 	if metricName == failingMetricsName {
 		return fmt.Errorf("store error: %s", failingMetricsName)
 	}
 	return nil
 }
-func (MockMetricsRepository) StoreGauge(metricName string, value float64) error {
+
+func (m *MockMetricsRepository) StoreGauge(metricName string, value float64) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.gaugeCalls = append(m.gaugeCalls, GaugeCall{
+		MetricName: metricName,
+		Value:      value,
+	})
+
 	if metricName == failingMetricsName {
 		return fmt.Errorf("store error: %s", failingMetricsName)
 	}
 	return nil
 }
-func (MockMetricsRepository) Persist() error {
+
+func (m *MockMetricsRepository) Persist() error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.persistCalls++
+	if m.shouldFailPersist {
+		return fmt.Errorf("persist failed")
+	}
 	return nil
+}
+
+func (m *MockMetricsRepository) GetCounterCalls() []CounterCall {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return append([]CounterCall(nil), m.counterCalls...)
+}
+
+func (m *MockMetricsRepository) GetGaugeCalls() []GaugeCall {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return append([]GaugeCall(nil), m.gaugeCalls...)
+}
+
+func (m *MockMetricsRepository) GetPersistCalls() int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.persistCalls
+}
+
+func (m *MockMetricsRepository) Reset() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.counterCalls = m.counterCalls[:0]
+	m.gaugeCalls = m.gaugeCalls[:0]
+	m.persistCalls = 0
+	m.shouldFailPersist = false
 }
 
 func TestStoreHandler_Handle(t *testing.T) {
 	var (
-		delta int64 = 100
-		value       = 100.0
+		delta      int64   = 100
+		value      float64 = 100.0
+		zeroDelta  int64   = 0
+		zeroValue  float64 = 0.0
+		negDelta   int64   = -50
+		negValue   float64 = -25.5
+		largeDelta int64   = math.MaxInt64
+		largeValue float64 = math.MaxFloat64
 	)
+
 	type given struct {
+		setupMock func(*MockMetricsRepository)
+		config    *config.Config
 	}
 	type when struct {
-		request dto.Metrics
+		request     dto.Metrics
+		requestBody string // for malformed JSON tests
+		useRawBody  bool
 	}
 	type want struct {
-		contentType string
-		statusCode  int
+		contentType      string
+		statusCode       int
+		responseContains string
+		verifyMock       func(*testing.T, *MockMetricsRepository)
 	}
+
 	tests := []struct {
 		name  string
-		given *given
+		given given
 		when  when
 		want  want
 	}{
 		{
+			name: "malformed JSON request",
+			given: given{
+				config: &config.Config{
+					Storage: config.StorageConfig{StoreInterval: 300 * time.Second},
+				},
+			},
+			when: when{
+				requestBody: `{"invalid": json}`,
+				useRawBody:  true,
+			},
+			want: want{
+				contentType:      "text/plain; charset=utf-8",
+				statusCode:       http.StatusBadRequest,
+				responseContains: "Bad Request",
+			},
+		},
+		{
 			name: "empty metrics name",
+			given: given{
+				config: &config.Config{
+					Storage: config.StorageConfig{StoreInterval: 300 * time.Second},
+				},
+			},
 			when: when{
 				request: dto.Metrics{
 					ID:    "",
@@ -66,25 +180,37 @@ func TestStoreHandler_Handle(t *testing.T) {
 				},
 			},
 			want: want{
-				contentType: "application/json",
-				statusCode:  http.StatusNotFound,
+				contentType:      "text/plain; charset=utf-8",
+				statusCode:       http.StatusNotFound,
+				responseContains: "Not Found",
 			},
 		},
 		{
 			name: "unknown metrics type",
+			given: given{
+				config: &config.Config{
+					Storage: config.StorageConfig{StoreInterval: 300 * time.Second},
+				},
+			},
 			when: when{
 				request: dto.Metrics{
 					ID:    "test",
-					MType: "test",
+					MType: "invalid_type",
 				},
 			},
 			want: want{
-				contentType: "application/json",
-				statusCode:  http.StatusBadRequest,
+				contentType:      "text/plain; charset=utf-8",
+				statusCode:       http.StatusBadRequest,
+				responseContains: "Bad Request",
 			},
 		},
 		{
 			name: "empty delta in counter metrics type",
+			given: given{
+				config: &config.Config{
+					Storage: config.StorageConfig{StoreInterval: 300 * time.Second},
+				},
+			},
 			when: when{
 				request: dto.Metrics{
 					ID:    "test",
@@ -92,12 +218,18 @@ func TestStoreHandler_Handle(t *testing.T) {
 				},
 			},
 			want: want{
-				contentType: "application/json",
-				statusCode:  http.StatusBadRequest,
+				contentType:      "text/plain; charset=utf-8",
+				statusCode:       http.StatusBadRequest,
+				responseContains: "Bad Request",
 			},
 		},
 		{
-			name: "empty delta in gauge metrics type",
+			name: "empty value in gauge metrics type",
+			given: given{
+				config: &config.Config{
+					Storage: config.StorageConfig{StoreInterval: 300 * time.Second},
+				},
+			},
 			when: when{
 				request: dto.Metrics{
 					ID:    "test",
@@ -105,12 +237,18 @@ func TestStoreHandler_Handle(t *testing.T) {
 				},
 			},
 			want: want{
-				contentType: "application/json",
-				statusCode:  http.StatusBadRequest,
+				contentType:      "text/plain; charset=utf-8",
+				statusCode:       http.StatusBadRequest,
+				responseContains: "Bad Request",
 			},
 		},
 		{
 			name: "counter storing error",
+			given: given{
+				config: &config.Config{
+					Storage: config.StorageConfig{StoreInterval: 300 * time.Second},
+				},
+			},
 			when: when{
 				request: dto.Metrics{
 					ID:    failingMetricsName,
@@ -119,12 +257,18 @@ func TestStoreHandler_Handle(t *testing.T) {
 				},
 			},
 			want: want{
-				contentType: "application/json",
-				statusCode:  http.StatusInternalServerError,
+				contentType:      "text/plain; charset=utf-8",
+				statusCode:       http.StatusInternalServerError,
+				responseContains: "Internal Server Error",
 			},
 		},
 		{
 			name: "gauge storing error",
+			given: given{
+				config: &config.Config{
+					Storage: config.StorageConfig{StoreInterval: 300 * time.Second},
+				},
+			},
 			when: when{
 				request: dto.Metrics{
 					ID:    failingMetricsName,
@@ -133,83 +277,336 @@ func TestStoreHandler_Handle(t *testing.T) {
 				},
 			},
 			want: want{
-				contentType: "application/json",
-				statusCode:  http.StatusInternalServerError,
+				contentType:      "text/plain; charset=utf-8",
+				statusCode:       http.StatusInternalServerError,
+				responseContains: "Internal Server Error",
 			},
 		},
 		{
 			name: "counter successfully stored",
+			given: given{
+				config: &config.Config{
+					Storage: config.StorageConfig{StoreInterval: 300 * time.Second},
+				},
+			},
 			when: when{
 				request: dto.Metrics{
-					ID:    "test",
+					ID:    "test_counter",
 					MType: dto.CounterMetricsType,
 					Delta: &delta,
 				},
 			},
 			want: want{
-				contentType: "application/json",
-				statusCode:  http.StatusOK,
+				statusCode: http.StatusOK,
+				verifyMock: func(t *testing.T, mock *MockMetricsRepository) {
+					calls := mock.GetCounterCalls()
+					require.Len(t, calls, 1)
+					assert.Equal(t, "test_counter", calls[0].MetricName)
+					assert.Equal(t, int64(100), calls[0].Value)
+				},
 			},
 		},
 		{
 			name: "gauge successfully stored",
+			given: given{
+				config: &config.Config{
+					Storage: config.StorageConfig{StoreInterval: 300 * time.Second},
+				},
+			},
 			when: when{
 				request: dto.Metrics{
-					ID:    "test",
+					ID:    "test_gauge",
 					MType: dto.GaugeMetricsType,
 					Value: &value,
 				},
 			},
 			want: want{
-				contentType: "application/json",
-				statusCode:  http.StatusOK,
+				statusCode: http.StatusOK,
+				verifyMock: func(t *testing.T, mock *MockMetricsRepository) {
+					calls := mock.GetGaugeCalls()
+					require.Len(t, calls, 1)
+					assert.Equal(t, "test_gauge", calls[0].MetricName)
+					assert.Equal(t, 100.0, calls[0].Value)
+				},
+			},
+		},
+		{
+			name: "counter with zero value",
+			given: given{
+				config: &config.Config{
+					Storage: config.StorageConfig{StoreInterval: 300 * time.Second},
+				},
+			},
+			when: when{
+				request: dto.Metrics{
+					ID:    "zero_counter",
+					MType: dto.CounterMetricsType,
+					Delta: &zeroDelta,
+				},
+			},
+			want: want{
+				statusCode: http.StatusOK,
+				verifyMock: func(t *testing.T, mock *MockMetricsRepository) {
+					calls := mock.GetCounterCalls()
+					require.Len(t, calls, 1)
+					assert.Equal(t, "zero_counter", calls[0].MetricName)
+					assert.Equal(t, int64(0), calls[0].Value)
+				},
+			},
+		},
+		{
+			name: "gauge with zero value",
+			given: given{
+				config: &config.Config{
+					Storage: config.StorageConfig{StoreInterval: 300 * time.Second},
+				},
+			},
+			when: when{
+				request: dto.Metrics{
+					ID:    "zero_gauge",
+					MType: dto.GaugeMetricsType,
+					Value: &zeroValue,
+				},
+			},
+			want: want{
+				statusCode: http.StatusOK,
+				verifyMock: func(t *testing.T, mock *MockMetricsRepository) {
+					calls := mock.GetGaugeCalls()
+					require.Len(t, calls, 1)
+					assert.Equal(t, "zero_gauge", calls[0].MetricName)
+					assert.Equal(t, 0.0, calls[0].Value)
+				},
+			},
+		},
+		{
+			name: "counter with negative value",
+			given: given{
+				config: &config.Config{
+					Storage: config.StorageConfig{StoreInterval: 300 * time.Second},
+				},
+			},
+			when: when{
+				request: dto.Metrics{
+					ID:    "neg_counter",
+					MType: dto.CounterMetricsType,
+					Delta: &negDelta,
+				},
+			},
+			want: want{
+				statusCode: http.StatusOK,
+				verifyMock: func(t *testing.T, mock *MockMetricsRepository) {
+					calls := mock.GetCounterCalls()
+					require.Len(t, calls, 1)
+					assert.Equal(t, "neg_counter", calls[0].MetricName)
+					assert.Equal(t, int64(-50), calls[0].Value)
+				},
+			},
+		},
+		{
+			name: "gauge with negative value",
+			given: given{
+				config: &config.Config{
+					Storage: config.StorageConfig{StoreInterval: 300 * time.Second},
+				},
+			},
+			when: when{
+				request: dto.Metrics{
+					ID:    "neg_gauge",
+					MType: dto.GaugeMetricsType,
+					Value: &negValue,
+				},
+			},
+			want: want{
+				statusCode: http.StatusOK,
+				verifyMock: func(t *testing.T, mock *MockMetricsRepository) {
+					calls := mock.GetGaugeCalls()
+					require.Len(t, calls, 1)
+					assert.Equal(t, "neg_gauge", calls[0].MetricName)
+					assert.Equal(t, -25.5, calls[0].Value)
+				},
+			},
+		},
+		{
+			name: "counter with max value",
+			given: given{
+				config: &config.Config{
+					Storage: config.StorageConfig{StoreInterval: 300 * time.Second},
+				},
+			},
+			when: when{
+				request: dto.Metrics{
+					ID:    "max_counter",
+					MType: dto.CounterMetricsType,
+					Delta: &largeDelta,
+				},
+			},
+			want: want{
+				statusCode: http.StatusOK,
+				verifyMock: func(t *testing.T, mock *MockMetricsRepository) {
+					calls := mock.GetCounterCalls()
+					require.Len(t, calls, 1)
+					assert.Equal(t, "max_counter", calls[0].MetricName)
+					assert.Equal(t, int64(math.MaxInt64), calls[0].Value)
+				},
+			},
+		},
+		{
+			name: "gauge with max value",
+			given: given{
+				config: &config.Config{
+					Storage: config.StorageConfig{StoreInterval: 300 * time.Second},
+				},
+			},
+			when: when{
+				request: dto.Metrics{
+					ID:    "max_gauge",
+					MType: dto.GaugeMetricsType,
+					Value: &largeValue,
+				},
+			},
+			want: want{
+				statusCode: http.StatusOK,
+				verifyMock: func(t *testing.T, mock *MockMetricsRepository) {
+					calls := mock.GetGaugeCalls()
+					require.Len(t, calls, 1)
+					assert.Equal(t, "max_gauge", calls[0].MetricName)
+					assert.Equal(t, math.MaxFloat64, calls[0].Value)
+				},
 			},
 		},
 	}
 
-	handler := NewStoreHandler(MockMetricsRepository{}, config.Load())
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Setup mock
+			mock := NewMockMetricsRepository()
+			if tt.given.setupMock != nil {
+				tt.given.setupMock(mock)
+			}
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("/update", handler.Handle)
+			handler := NewStoreHandler(mock, tt.given.config)
 
-	server := httptest.NewServer(mux)
-	defer server.Close()
+			mux := http.NewServeMux()
+			mux.HandleFunc("/update", handler.Handle)
 
-	baseURL, err := url.Parse(server.URL)
-	assert.NoError(t, err)
+			server := httptest.NewServer(mux)
+			defer server.Close()
 
-	updateURL := baseURL.JoinPath("update").String()
+			baseURL, err := url.Parse(server.URL)
+			assert.NoError(t, err)
+			updateURL := baseURL.JoinPath("update").String()
 
-	client := http.Client{}
+			client := http.Client{}
+
+			// Prepare request body
+			var body io.Reader
+			if tt.when.useRawBody {
+				body = strings.NewReader(tt.when.requestBody)
+			} else {
+				jsonBody, err := json.Marshal(tt.when.request)
+				require.NoError(t, err)
+				body = bytes.NewReader(jsonBody)
+			}
+
+			req, err := http.NewRequest(http.MethodPost, updateURL, body)
+			require.NoError(t, err)
+
+			resp, err := client.Do(req)
+			require.NoError(t, err)
+
+			defer func(Body io.ReadCloser) {
+				if err := Body.Close(); err != nil {
+					t.Errorf("error closing response body: %v", err)
+				}
+			}(resp.Body)
+
+			// Verify response
+			assert.Equal(t, tt.want.statusCode, resp.StatusCode)
+
+			if tt.want.contentType != "" {
+				assert.Equal(t, tt.want.contentType, resp.Header.Get("Content-Type"))
+			}
+
+			if tt.want.responseContains != "" {
+				responseBody, err := io.ReadAll(resp.Body)
+				require.NoError(t, err)
+				assert.Contains(t, string(responseBody), tt.want.responseContains)
+			}
+
+			// Verify mock interactions
+			if tt.want.verifyMock != nil {
+				tt.want.verifyMock(t, mock)
+			}
+		})
+	}
+}
+
+func TestStoreHandler_PersistBehavior(t *testing.T) {
+	delta := int64(100)
+
+	tests := []struct {
+		name          string
+		storeInterval time.Duration
+		expectPersist bool
+	}{
+		{
+			name:          "persist when store interval is zero",
+			storeInterval: 0,
+			expectPersist: true,
+		},
+		{
+			name:          "no persist when store interval is non-zero",
+			storeInterval: 30 * time.Second,
+			expectPersist: false,
+		},
+	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			body, err := json.Marshal(tt.when.request)
+			mock := NewMockMetricsRepository()
+
+			cfg := &config.Config{
+				Storage: config.StorageConfig{StoreInterval: tt.storeInterval},
+			}
+
+			handler := NewStoreHandler(mock, cfg)
+
+			mux := http.NewServeMux()
+			mux.HandleFunc("/update", handler.Handle)
+
+			server := httptest.NewServer(mux)
+			defer server.Close()
+
+			baseURL, err := url.Parse(server.URL)
+			require.NoError(t, err)
+			updateURL := baseURL.JoinPath("update").String()
+
+			request := dto.Metrics{
+				ID:    "test_persist",
+				MType: dto.CounterMetricsType,
+				Delta: &delta,
+			}
+
+			body, err := json.Marshal(request)
 			require.NoError(t, err)
 
 			req, err := http.NewRequest(http.MethodPost, updateURL, bytes.NewReader(body))
 			require.NoError(t, err)
 
+			client := http.Client{}
 			resp, err := client.Do(req)
-			if err != nil {
-				err := resp.Body.Close()
-				if err != nil {
-					slog.Error(fmt.Sprintf("Failed to close response body: %s", err))
-					return
-				}
-			}
-
 			require.NoError(t, err)
+			defer resp.Body.Close()
 
-			defer func(Body io.ReadCloser) {
-				err := Body.Close()
-				if err != nil {
-					t.Errorf("error closing response body: %v", err)
-				}
-			}(resp.Body)
+			assert.Equal(t, http.StatusOK, resp.StatusCode)
 
-			assert.Equal(t, tt.want.statusCode, resp.StatusCode)
-			assert.Equal(t, tt.want.contentType, "application/json")
+			// Verify persist behavior
+			persistCalls := mock.GetPersistCalls()
+			if tt.expectPersist {
+				assert.Equal(t, 1, persistCalls, "Expected Persist() to be called once")
+			} else {
+				assert.Equal(t, 0, persistCalls, "Expected Persist() not to be called")
+			}
 		})
 	}
 }
