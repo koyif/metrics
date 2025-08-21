@@ -34,8 +34,11 @@ func New(ctx context.Context, wg *sync.WaitGroup, cfg *config.Config) *App {
 
 	metricsService := service.NewMetricsService(metricsRepository, fileService)
 
-	db := database.New(ctx, cfg.Storage.DatabaseURL)
-	pingService := ping.NewService(db)
+	var pingService *ping.Service
+	if cfg.Storage.DatabaseURL != "" {
+		db := database.New(ctx, cfg.Storage.DatabaseURL)
+		pingService = ping.NewService(db)
+	}
 
 	return &App{
 		Config:         cfg,

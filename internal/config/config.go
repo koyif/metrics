@@ -15,7 +15,7 @@ type StorageConfig struct {
 	StoreInterval   time.Duration `yaml:"store_interval" default:"300s"`
 	FileStoragePath string        `yaml:"file_storage_path" default:"/tmp/storage"`
 	Restore         bool          `yaml:"restore" default:"false"`
-	DatabaseURL     string        `yaml:"database_url" default:"postgres://user:password@localhost:5432/metrics?sslmode=disable"`
+	DatabaseURL     string        `yaml:"database_url"`
 }
 
 type Config struct {
@@ -39,12 +39,7 @@ func Load() *Config {
 	flag.Func("i", "интервал сохранения", secondsToDuration(&cfg.Storage.StoreInterval))
 	flag.StringVar(&cfg.Storage.FileStoragePath, "f", "/tmp/storage", "путь к файлу для хранения")
 	flag.BoolVar(&cfg.Storage.Restore, "r", false, "восстанавливать данные из файла")
-	flag.StringVar(
-		&cfg.Storage.DatabaseURL,
-		"d",
-		"postgres://user:password@localhost:5432/metrics?sslmode=disable",
-		"URL базы данных для хранения метрик",
-	)
+	flag.StringVar(&cfg.Storage.DatabaseURL, "d", "", "URL базы данных для хранения метрик")
 
 	flag.Parse()
 

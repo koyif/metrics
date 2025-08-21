@@ -24,10 +24,12 @@ func (app App) Router() *chi.Mux {
 	counterPostHandler := deprecated.NewCountersPostHandler(app.MetricsService)
 	gaugePostHandler := deprecated.NewGaugesPostHandler(app.MetricsService)
 
-	pingHandler := health.NewPingHandler(app.PingService)
-
 	r.Get("/", summaryHandler.Handle)
-	r.Get("/ping", pingHandler.Handle)
+
+	if app.PingService != nil {
+		pingHandler := health.NewPingHandler(app.PingService)
+		r.Get("/ping", pingHandler.Handle)
+	}
 
 	r.Route("/value", func(r chi.Router) {
 		r.Post("/", getHandler.Handle)

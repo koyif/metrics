@@ -117,14 +117,14 @@ func (m *MockMetricsRepository) Reset() {
 
 func TestStoreHandler_Handle(t *testing.T) {
 	var (
-		delta      int64   = 100
-		value      float64 = 100.0
-		zeroDelta  int64   = 0
-		zeroValue  float64 = 0.0
-		negDelta   int64   = -50
-		negValue   float64 = -25.5
-		largeDelta int64   = math.MaxInt64
-		largeValue float64 = math.MaxFloat64
+		delta      int64 = 100
+		value            = 100.0
+		zeroDelta  int64 = 0
+		zeroValue        = 0.0
+		negDelta   int64 = -50
+		negValue         = -25.5
+		largeDelta int64 = math.MaxInt64
+		largeValue       = math.MaxFloat64
 	)
 
 	type given struct {
@@ -512,13 +512,14 @@ func TestStoreHandler_Handle(t *testing.T) {
 			require.NoError(t, err)
 
 			resp, err := client.Do(req)
+			if err == nil {
+				defer func(Body io.ReadCloser) {
+					if err := Body.Close(); err != nil {
+						t.Errorf("error closing response body: %v", err)
+					}
+				}(resp.Body)
+			}
 			require.NoError(t, err)
-
-			defer func(Body io.ReadCloser) {
-				if err := Body.Close(); err != nil {
-					t.Errorf("error closing response body: %v", err)
-				}
-			}(resp.Body)
 
 			// Verify response
 			assert.Equal(t, tt.want.statusCode, resp.StatusCode)
