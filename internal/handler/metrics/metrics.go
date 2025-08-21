@@ -70,7 +70,11 @@ func (sh StoreHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if sh.cfg.Storage.StoreInterval == 0 {
-		sh.service.Persist()
+		err := sh.service.Persist()
+		if err != nil {
+			handler.BadRequest(w, r.RequestURI, "failed to persist metrics")
+			return
+		}
 	}
 
 	w.WriteHeader(http.StatusOK)

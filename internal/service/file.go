@@ -7,15 +7,28 @@ import (
 
 	"github.com/koyif/metrics/internal/app/logger"
 	models "github.com/koyif/metrics/internal/model"
-	"github.com/koyif/metrics/internal/repository"
 )
 
-type FileService struct {
-	fileRepository    *repository.FileRepository
-	metricsRepository *repository.MetricsRepository
+type metricsRepository interface {
+	StoreCounter(metricName string, value int64) error
+	Counter(metricName string) (int64, error)
+	AllCounters() map[string]int64
+	StoreGauge(metricName string, value float64) error
+	Gauge(metricName string) (float64, error)
+	AllGauges() map[string]float64
 }
 
-func NewFileService(fileRepository *repository.FileRepository, metricsRepository *repository.MetricsRepository) *FileService {
+type fileRepository interface {
+	Save(metrics []models.Metrics) error
+	Load() ([]models.Metrics, error)
+}
+
+type FileService struct {
+	fileRepository    fileRepository
+	metricsRepository metricsRepository
+}
+
+func NewFileService(fileRepository fileRepository, metricsRepository metricsRepository) *FileService {
 	return &FileService{
 		fileRepository:    fileRepository,
 		metricsRepository: metricsRepository,
