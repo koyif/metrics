@@ -1,6 +1,6 @@
 package service
 
-type metricsRepository interface {
+type repository interface {
 	StoreCounter(metricName string, value int64) error
 	Counter(metricName string) (int64, error)
 	AllCounters() map[string]int64
@@ -14,11 +14,11 @@ type fileService interface {
 }
 
 type MetricsService struct {
-	repository  metricsRepository
+	repository  repository
 	fileService fileService
 }
 
-func NewMetricsService(repository metricsRepository, fileService fileService) *MetricsService {
+func NewMetricsService(repository repository, fileService fileService) *MetricsService {
 	return &MetricsService{
 		repository:  repository,
 		fileService: fileService,

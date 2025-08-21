@@ -15,6 +15,7 @@ type StorageConfig struct {
 	StoreInterval   time.Duration `yaml:"store_interval" default:"300s"`
 	FileStoragePath string        `yaml:"file_storage_path" default:"/tmp/storage"`
 	Restore         bool          `yaml:"restore" default:"false"`
+	DatabaseURL     string        `yaml:"database_url"`
 }
 
 type Config struct {
@@ -38,6 +39,7 @@ func Load() *Config {
 	flag.Func("i", "интервал сохранения", secondsToDuration(&cfg.Storage.StoreInterval))
 	flag.StringVar(&cfg.Storage.FileStoragePath, "f", "/tmp/storage", "путь к файлу для хранения")
 	flag.BoolVar(&cfg.Storage.Restore, "r", false, "восстанавливать данные из файла")
+	flag.StringVar(&cfg.Storage.DatabaseURL, "d", "", "URL базы данных для хранения метрик")
 
 	flag.Parse()
 
@@ -45,6 +47,7 @@ func Load() *Config {
 	getEnvInt("STORE_INTERVAL", &cfg.Storage.StoreInterval, time.Second)
 	getEnvBool("RESTORE", &cfg.Storage.Restore)
 	getEnvString("FILE_STORAGE_PATH", &cfg.Storage.FileStoragePath)
+	getEnvString("DATABASE_DSN", &cfg.Storage.DatabaseURL)
 
 	return cfg
 }
