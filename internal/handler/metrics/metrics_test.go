@@ -512,13 +512,14 @@ func TestStoreHandler_Handle(t *testing.T) {
 			require.NoError(t, err)
 
 			resp, err := client.Do(req)
-			if err == nil {
-				defer func(Body io.ReadCloser) {
-					if err := Body.Close(); err != nil {
-						t.Errorf("error closing response body: %v", err)
-					}
-				}(resp.Body)
-			}
+			defer func(r *http.Response) {
+				if r == nil || r.Body == nil {
+					return
+				}
+				if err := r.Body.Close(); err != nil {
+					t.Errorf("error closing response body: %v", err)
+				}
+			}(resp)
 			require.NoError(t, err)
 
 			// Verify response

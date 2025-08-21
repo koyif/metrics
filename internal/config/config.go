@@ -47,7 +47,7 @@ func Load() *Config {
 	getEnvInt("STORE_INTERVAL", &cfg.Storage.StoreInterval, time.Second)
 	getEnvBool("RESTORE", &cfg.Storage.Restore)
 	getEnvString("FILE_STORAGE_PATH", &cfg.Storage.FileStoragePath)
-	getEnvString("DATABASE_CONN_STRING", &cfg.Storage.DatabaseURL)
+	getEnvString("DATABASE_DSN", &cfg.Storage.DatabaseURL)
 
 	return cfg
 }
