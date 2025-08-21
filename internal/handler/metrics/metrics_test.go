@@ -512,15 +512,13 @@ func TestStoreHandler_Handle(t *testing.T) {
 			require.NoError(t, err)
 
 			resp, err := client.Do(req)
-			defer func(r *http.Response) {
-				if r == nil || r.Body == nil {
-					return
-				}
-				if err := r.Body.Close(); err != nil {
+			require.NoError(t, err)
+			defer func(Body io.ReadCloser) {
+				err := Body.Close()
+				if err != nil {
 					t.Errorf("error closing response body: %v", err)
 				}
-			}(resp)
-			require.NoError(t, err)
+			}(resp.Body)
 
 			// Verify response
 			assert.Equal(t, tt.want.statusCode, resp.StatusCode)
@@ -598,7 +596,12 @@ func TestStoreHandler_PersistBehavior(t *testing.T) {
 			client := http.Client{}
 			resp, err := client.Do(req)
 			require.NoError(t, err)
-			defer resp.Body.Close()
+			defer func(Body io.ReadCloser) {
+				err := Body.Close()
+				if err != nil {
+					t.Errorf("error closing response body: %v", err)
+				}
+			}(resp.Body)
 
 			assert.Equal(t, http.StatusOK, resp.StatusCode)
 
