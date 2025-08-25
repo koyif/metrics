@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"github.com/koyif/metrics/internal/repository/dberror"
 	"log"
 	"time"
 
@@ -67,6 +68,9 @@ func (db *Database) Metric(metricName string) (models.Metrics, error) {
 	row := db.conn.QueryRow(context.Background(), sql, metricName)
 
 	if err := row.Scan(&metric.ID, &metric.MType, &metric.Value, &metric.Delta); err != nil {
+		if err == pgx.ErrNoRows {
+			return metric, dberror.ErrValueNotFound
+		}
 		return metric, err
 	}
 

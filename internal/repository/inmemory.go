@@ -3,9 +3,8 @@ package repository
 import (
 	"errors"
 	"github.com/koyif/metrics/internal/models"
+	"github.com/koyif/metrics/internal/repository/dberror"
 )
-
-var ErrValueNotFound = errors.New("value not found")
 
 type MetricsRepository struct {
 	counters map[string]int64
@@ -31,7 +30,7 @@ func (m *MetricsRepository) Counter(metricName string) (int64, error) {
 	if v, ok := m.counters[metricName]; ok {
 		return v, nil
 	} else {
-		return 0, ErrValueNotFound
+		return 0, dberror.ErrValueNotFound
 	}
 }
 
@@ -39,7 +38,7 @@ func (m *MetricsRepository) Gauge(metricName string) (float64, error) {
 	if v, ok := m.gauges[metricName]; ok {
 		return v, nil
 	} else {
-		return 0, ErrValueNotFound
+		return 0, dberror.ErrValueNotFound
 	}
 }
 

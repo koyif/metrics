@@ -5,11 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"github.com/koyif/metrics/internal/models"
+	"github.com/koyif/metrics/internal/repository/dberror"
 	"net/http"
 
 	"github.com/koyif/metrics/internal/config"
 	"github.com/koyif/metrics/internal/handler"
-	"github.com/koyif/metrics/internal/repository"
 	"github.com/koyif/metrics/pkg/dto"
 )
 
@@ -159,7 +159,7 @@ func (gh GetHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if valErr != nil && errors.Is(valErr, repository.ErrValueNotFound) {
+	if valErr != nil && errors.Is(valErr, dberror.ErrValueNotFound) {
 		handler.NotFound(w, r, fmt.Sprintf("value not found in storage: %s", m.ID))
 		return
 	} else if valErr != nil {
@@ -199,4 +199,3 @@ func (sh StoreHandler) handleGauge(w http.ResponseWriter, metricName string, val
 		return
 	}
 }
-

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/koyif/metrics/internal/handler"
-	"github.com/koyif/metrics/internal/repository"
+	"github.com/koyif/metrics/internal/repository/dberror"
 	"net/http"
 	"strconv"
 )
@@ -67,7 +67,7 @@ func (h CountersGetHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	value, err := h.service.Counter(mn)
-	if err != nil && errors.Is(err, repository.ErrValueNotFound) {
+	if err != nil && errors.Is(err, dberror.ErrValueNotFound) {
 		handler.NotFound(w, r, "value not found in storage")
 		return
 	}
