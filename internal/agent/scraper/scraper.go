@@ -2,12 +2,14 @@ package scraper
 
 import (
 	"runtime"
+	
+	"github.com/koyif/metrics/internal/models"
 )
 
 type storage interface {
 	Clean()
 	Store(metricName string, value float64)
-	Metrics() map[string]float64
+	Metrics() []models.Metrics
 }
 
 type Scraper struct {
@@ -22,7 +24,7 @@ func New(storage storage) *Scraper {
 	}
 }
 
-func (s *Scraper) Metrics() map[string]float64 {
+func (s *Scraper) Metrics() []models.Metrics {
 	return s.storage.Metrics()
 }
 

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/koyif/metrics/internal/app/logger"
-	models "github.com/koyif/metrics/internal/model"
+	models "github.com/koyif/metrics/internal/models"
 )
 
 type metricsRepository interface {

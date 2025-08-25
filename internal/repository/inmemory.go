@@ -2,6 +2,7 @@ package repository
 
 import (
 	"errors"
+	"github.com/koyif/metrics/internal/models"
 )
 
 var ErrValueNotFound = errors.New("value not found")
@@ -52,4 +53,32 @@ func (m *MetricsRepository) StoreGauge(metricName string, value float64) error {
 	m.gauges[metricName] = value
 
 	return nil
+}
+
+func (m *MetricsRepository) StoreAll(metrics []models.Metrics) error {
+	for _, metric := range metrics {
+		switch metric.MType {
+		case models.Gauge:
+			if metric.Value == nil {
+				return errors.New("gauge value is nil")
+			}
+			err := m.StoreGauge(metric.ID, *metric.Value)
+			if err != nil {
+				return err
+			}
+		case models.Counter:
+			if metric.Delta == nil {
+				return errors.New("counter delta is nil")
+			}
+			err := m.StoreCounter(metric.ID, *metric.Delta)
+			if err != nil {
+				return err
+			}
+		default:
+			return errors.New("unknown metric type")
+		}
+	}
+
+	return nil
+
 }

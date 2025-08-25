@@ -1,33 +1,22 @@
 package main
 
 import (
-	"fmt"
+	"log"
+
 	"github.com/koyif/metrics/internal/agent/app"
 	"github.com/koyif/metrics/internal/agent/config"
-	"log/slog"
-	"os"
+	"github.com/koyif/metrics/internal/app/logger"
 )
 
 func main() {
 	cfg := config.Load()
-	configureLogger()
+	if err := logger.Initialize(); err != nil {
+		log.Fatalf("error starting logger: %v", err)
+	}
 
 	a := app.New(cfg)
 
 	if err := a.Run(); err != nil {
-		slog.Error(fmt.Sprintf("error starting agent %v", err))
-		os.Exit(1)
+		logger.Log.Fatal("error running agent", logger.Error(err))
 	}
-}
-
-func configureLogger() {
-	log := slog.New(slog.NewTextHandler(
-		os.Stdout,
-		&slog.HandlerOptions{
-			Level: slog.LevelDebug,
-			AddSource: true,
-		},
-	))
-
-	slog.SetDefault(log)
 }

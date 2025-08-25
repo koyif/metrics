@@ -5,5 +5,5 @@ CREATE TABLE IF NOT EXISTS metrics
     metric_type TEXT    NOT NULL,
     metric_value        FLOAT,
     metric_delta        INTEGER,
-    updated_at          DATE NOT NULL
+    updated_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

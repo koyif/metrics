@@ -1,9 +1,10 @@
 package repository
 
-import models "github.com/koyif/metrics/internal/model"
+import models "github.com/koyif/metrics/internal/models"
 
 type database interface {
 	StoreMetric(metric models.Metrics) error
+	StoreAll(metrics []models.Metrics) error
 	Metric(metricName string) (models.Metrics, error)
 	AllMetrics() []models.Metrics
 }
@@ -36,6 +37,10 @@ func (r DatabaseRepository) StoreCounter(metricName string, value int64) error {
 			Delta: &value,
 		},
 	)
+}
+
+func (r DatabaseRepository) StoreAll(metrics []models.Metrics) error {
+	return r.db.StoreAll(metrics)
 }
 
 func (r DatabaseRepository) Counter(metricName string) (int64, error) {

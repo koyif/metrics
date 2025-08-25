@@ -8,6 +8,7 @@ import (
 
 	"github.com/koyif/metrics/internal/app/logger"
 	"github.com/koyif/metrics/internal/config"
+	"github.com/koyif/metrics/internal/models"
 	"github.com/koyif/metrics/internal/persistence/database"
 	"github.com/koyif/metrics/internal/repository"
 	"github.com/koyif/metrics/internal/service"
@@ -21,6 +22,7 @@ type metricsRepository interface {
 	StoreGauge(metricName string, value float64) error
 	Gauge(metricName string) (float64, error)
 	AllGauges() map[string]float64
+	StoreAll(metrics []models.Metrics) error
 }
 
 type App struct {

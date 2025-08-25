@@ -2,12 +2,12 @@ package database
 
 import (
 	"context"
-	"github.com/koyif/metrics/internal/app/logger"
-	models "github.com/koyif/metrics/internal/model"
 	"log"
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/koyif/metrics/internal/app/logger"
+	"github.com/koyif/metrics/internal/models"
 )
 
 type Database struct {
@@ -36,6 +36,28 @@ func (db *Database) StoreMetric(metric models.Metrics) error {
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func (db *Database) StoreAll(metrics []models.Metrics) error {
+	sql := "INSERT INTO metrics (metric_name, metric_type, metric_value, metric_delta, updated_at) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (metric_name) DO UPDATE SET metric_value = $3, metric_delta = $4, updated_at = $5"
+
+	_, err := db.conn.Prepare(context.Background(), "insert_metric", sql)
+	if err != nil {
+		return err
+	}
+
+	batch := &pgx.Batch{}
+	updatedAt := time.Now()
+	for _, metric := range metrics {
+		batch.Queue("insert_metric", metric.ID, metric.MType, metric.Value, metric.Delta, updatedAt)
+	}
+	br := db.conn.SendBatch(context.Background(), batch)
+	err = br.Close()
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

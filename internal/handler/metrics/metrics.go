@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-
+	"github.com/koyif/metrics/internal/models"
 	"net/http"
 
 	"github.com/koyif/metrics/internal/config"
@@ -16,6 +16,7 @@ import (
 type metricsStorer interface {
 	StoreCounter(metricName string, value int64) error
 	StoreGauge(metricName string, value float64) error
+	StoreAll(metrics []models.Metrics) error
 	Persist() error
 }
 
@@ -29,12 +30,24 @@ type StoreHandler struct {
 	cfg     *config.Config
 }
 
+type StoreAllHandler struct {
+	service metricsStorer
+	cfg     *config.Config
+}
+
 type GetHandler struct {
 	service metricsGetter
 }
 
 func NewStoreHandler(service metricsStorer, cfg *config.Config) *StoreHandler {
 	return &StoreHandler{
+		service: service,
+		cfg:     cfg,
+	}
+}
+
+func NewStoreAllHandler(service metricsStorer, cfg *config.Config) *StoreAllHandler {
+	return &StoreAllHandler{
 		service: service,
 		cfg:     cfg,
 	}
@@ -75,6 +88,44 @@ func (sh StoreHandler) Handle(w http.ResponseWriter, r *http.Request) {
 			handler.BadRequest(w, r.RequestURI, "failed to persist metrics")
 			return
 		}
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func (sh StoreAllHandler) Handle(w http.ResponseWriter, r *http.Request) {
+	var m []dto.Metrics
+
+	if err := json.NewDecoder(r.Body).Decode(&m); err != nil {
+		handler.BadRequest(w, r.RequestURI, "incorrect JSON format")
+		return
+	}
+
+	if len(m) == 0 {
+		handler.NotFound(w, r, "")
+		return
+	}
+
+	metrics := make([]models.Metrics, len(m))
+
+	for i, metric := range m {
+		if metric.ID == "" {
+			handler.NotFound(w, r, "")
+			return
+		}
+
+		metrics[i] = models.Metrics{
+			ID:    metric.ID,
+			MType: metric.MType,
+			Value: metric.Value,
+			Delta: metric.Delta,
+		}
+	}
+
+	err := sh.service.StoreAll(metrics)
+	if err != nil {
+		handler.InternalServerError(w, err, "failed to store metrics")
+		return
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -148,3 +199,4 @@ func (sh StoreHandler) handleGauge(w http.ResponseWriter, metricName string, val
 		return
 	}
 }
+

@@ -18,6 +18,7 @@ func (app App) Router() *chi.Mux {
 	summaryHandler := metrics.NewSummaryHandler(app.MetricsService)
 	getHandler := metrics.NewGetHandler(app.MetricsService)
 	storeHandler := metrics.NewStoreHandler(app.MetricsService, app.Config)
+	storeAllHandler := metrics.NewStoreAllHandler(app.MetricsService, app.Config)
 
 	counterGetHandler := deprecated.NewCountersGetHandler(app.MetricsService)
 	gaugeGetHandler := deprecated.NewGaugesGetHandler(app.MetricsService)
@@ -25,6 +26,8 @@ func (app App) Router() *chi.Mux {
 	gaugePostHandler := deprecated.NewGaugesPostHandler(app.MetricsService)
 
 	r.Get("/", summaryHandler.Handle)
+
+	r.Post("/updates", storeAllHandler.Handle)
 
 	if app.PingService != nil {
 		pingHandler := health.NewPingHandler(app.PingService)
