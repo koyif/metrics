@@ -76,7 +76,7 @@ func (c *MetricsClient) SendMetrics(metrics []models.Metrics) error {
 		return err
 	}
 
-	updatesURL := c.baseURL.JoinPath("updates")
+	updatesURL := c.baseURL.JoinPath("updates/")
 
 	response, err := c.httpClient.Post(
 		updatesURL.String(),

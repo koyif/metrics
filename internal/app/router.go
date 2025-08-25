@@ -27,7 +27,7 @@ func (app App) Router() *chi.Mux {
 
 	r.Get("/", summaryHandler.Handle)
 
-	r.Post("/updates", storeAllHandler.Handle)
+	r.Post("/updates/", storeAllHandler.Handle)
 
 	if app.PingService != nil {
 		pingHandler := health.NewPingHandler(app.PingService)
