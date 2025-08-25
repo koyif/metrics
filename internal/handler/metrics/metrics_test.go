@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/koyif/metrics/internal/models"
 	"io"
 	"math"
 	"net/http"
@@ -75,6 +76,12 @@ func (m *MockMetricsRepository) StoreGauge(metricName string, value float64) err
 		return fmt.Errorf("store error: %s", failingMetricsName)
 	}
 	return nil
+}
+
+func (m *MockMetricsRepository) StoreAll(metrics []models.Metrics) error {
+	// Not used in current tests
+	return nil
+
 }
 
 func (m *MockMetricsRepository) Persist() error {
