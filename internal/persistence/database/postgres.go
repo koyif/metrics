@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"errors"
 	"github.com/koyif/metrics/internal/repository/dberror"
 	"log"
 	"time"
@@ -41,7 +42,13 @@ func (db *Database) StoreMetric(metric models.Metrics) error {
 }
 
 func (db *Database) StoreAll(metrics []models.Metrics) error {
-	sql := "INSERT INTO metrics (metric_name, metric_type, metric_value, metric_delta, updated_at) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (metric_name) DO UPDATE SET metric_value = $3, metric_delta = $4, updated_at = $5"
+	sql := `INSERT INTO metrics (metric_name, metric_type, metric_value, metric_delta, updated_at) 
+		VALUES ($1, $2, $3, $4, $5) ON CONFLICT (metric_name) DO UPDATE
+		SET 
+		    metric_value = $3, 
+		    metric_delta = $4 + metrics.metric_delta,
+		    updated_at = $5
+		`
 
 	_, err := db.conn.Prepare(context.Background(), "insert_metric", sql)
 	if err != nil {
@@ -68,7 +75,7 @@ func (db *Database) Metric(metricName string) (models.Metrics, error) {
 	row := db.conn.QueryRow(context.Background(), sql, metricName)
 
 	if err := row.Scan(&metric.ID, &metric.MType, &metric.Value, &metric.Delta); err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return metric, dberror.ErrValueNotFound
 		}
 		return metric, err
