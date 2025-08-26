@@ -3,10 +3,10 @@ package app
 import (
 	"context"
 	"errors"
+	"github.com/koyif/metrics/pkg/logger"
 	"io"
 	"sync"
 
-	"github.com/koyif/metrics/internal/app/logger"
 	"github.com/koyif/metrics/internal/config"
 	"github.com/koyif/metrics/internal/models"
 	"github.com/koyif/metrics/internal/persistence/database"

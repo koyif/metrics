@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/koyif/metrics/pkg/logger"
 	"io"
 	"net/http"
 	"net/url"
 
 	"github.com/koyif/metrics/internal/agent/config"
-	"github.com/koyif/metrics/internal/app/logger"
 	"github.com/koyif/metrics/internal/models"
 )
 

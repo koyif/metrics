@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"compress/gzip"
-	"github.com/koyif/metrics/internal/app/logger"
+	"github.com/koyif/metrics/pkg/logger"
 	"io"
 	"net/http"
 	"strings"

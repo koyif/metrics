@@ -2,10 +2,10 @@ package service
 
 import (
 	"context"
+	"github.com/koyif/metrics/pkg/logger"
 	"sync"
 	"time"
 
-	"github.com/koyif/metrics/internal/app/logger"
 	models "github.com/koyif/metrics/internal/models"
 )
 

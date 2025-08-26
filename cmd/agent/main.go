@@ -1,11 +1,11 @@
 package main
 
 import (
+	"github.com/koyif/metrics/pkg/logger"
 	"log"
 
 	"github.com/koyif/metrics/internal/agent/app"
 	"github.com/koyif/metrics/internal/agent/config"
-	"github.com/koyif/metrics/internal/app/logger"
 )
 
 func main() {

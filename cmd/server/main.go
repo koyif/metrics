@@ -3,13 +3,13 @@ package main
 import (
 	"context"
 	"errors"
+	"github.com/koyif/metrics/pkg/logger"
 	"net/http"
 	"os/signal"
 	"sync"
 	"syscall"
 
 	"github.com/koyif/metrics/internal/app"
-	"github.com/koyif/metrics/internal/app/logger"
 	"github.com/koyif/metrics/internal/config"
 )
 

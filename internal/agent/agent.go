@@ -2,7 +2,7 @@ package agent
 
 import (
 	"context"
-	"github.com/koyif/metrics/internal/app/logger"
+	"github.com/koyif/metrics/pkg/logger"
 	"math/rand/v2"
 	"time"
 

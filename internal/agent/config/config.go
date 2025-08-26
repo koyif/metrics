@@ -2,11 +2,10 @@ package config
 
 import (
 	"flag"
+	"github.com/koyif/metrics/pkg/logger"
 	"os"
 	"strconv"
 	"time"
-
-	"github.com/koyif/metrics/internal/app/logger"
 )
 
 const (

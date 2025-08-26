@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"github.com/koyif/metrics/internal/app/logger"
+	"github.com/koyif/metrics/pkg/logger"
 	"net/http"
 )
 

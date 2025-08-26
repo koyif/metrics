@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"github.com/koyif/metrics/pkg/logger"
 	"net/http"
 	"os"
 	"os/signal"
@@ -12,7 +13,6 @@ import (
 	"github.com/koyif/metrics/internal/agent/config"
 	"github.com/koyif/metrics/internal/agent/scraper"
 	"github.com/koyif/metrics/internal/agent/storage"
-	"github.com/koyif/metrics/internal/app/logger"
 )
 
 type App struct {
