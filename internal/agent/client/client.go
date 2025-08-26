@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/koyif/metrics/internal/agent/config"
+	"github.com/koyif/metrics/internal/models"
+	"github.com/koyif/metrics/pkg/errutil"
 	"github.com/koyif/metrics/pkg/logger"
 	"io"
 	"net/http"
 	"net/url"
-
-	"github.com/koyif/metrics/internal/agent/config"
-	"github.com/koyif/metrics/internal/models"
 )
 
 type MetricsClient struct {
@@ -78,12 +78,15 @@ func (c *MetricsClient) SendMetrics(metrics []models.Metrics) error {
 
 	updatesURL := c.baseURL.JoinPath("updates/")
 
-	response, err := c.httpClient.Post(
-		updatesURL.String(),
-		"application/json",
-		bytes.NewReader(requestBody),
-	)
-
+	var response *http.Response
+	err = errutil.Retry(NewHttpErrorClassifier(), func() error {
+		response, err = c.httpClient.Post(
+			updatesURL.String(),
+			"application/json",
+			bytes.NewReader(requestBody),
+		)
+		return err
+	})
 	if err != nil {
 		if response != nil && response.Body != nil {
 			err := response.Body.Close()

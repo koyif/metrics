@@ -3,7 +3,6 @@ package database
 import (
 	"context"
 	"errors"
-	"github.com/koyif/metrics/pkg/logger"
 	"log"
 	"time"
 
@@ -11,6 +10,7 @@ import (
 	"github.com/koyif/metrics/internal/models"
 	"github.com/koyif/metrics/internal/repository/dberror"
 	"github.com/koyif/metrics/pkg/errutil"
+	"github.com/koyif/metrics/pkg/logger"
 )
 
 type Database struct {
@@ -35,7 +35,7 @@ func New(ctx context.Context, url string) *Database {
 func (db *Database) StoreMetric(metric models.Metrics) error {
 	sql := "INSERT INTO metrics (metric_name, metric_type, metric_value, metric_delta, updated_at) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (metric_name) DO UPDATE SET metric_value = $3, metric_delta = $4, updated_at = $5"
 
-	err := errutil.Retry(&PostgresErrorClassifier{}, func() error {
+	err := errutil.Retry(NewPostgresErrorClassifier(), func() error {
 		_, err := db.conn.Exec(context.Background(), sql, metric.ID, metric.MType, metric.Value, metric.Delta, time.Now())
 		return err
 	})
@@ -67,7 +67,7 @@ func (db *Database) StoreAll(metrics []models.Metrics) error {
 	}
 	br := db.conn.SendBatch(context.Background(), batch)
 
-	err = errutil.Retry(&PostgresErrorClassifier{}, func() error {
+	err = errutil.Retry(NewPostgresErrorClassifier(), func() error {
 		return br.Close()
 	})
 	if err != nil {
@@ -87,7 +87,7 @@ func (db *Database) Metric(metricName string) (models.Metrics, error) {
 	var metric models.Metrics
 	row := db.conn.QueryRow(context.Background(), sql, metricName)
 
-	err := errutil.Retry(&PostgresErrorClassifier{}, func() error {
+	err := errutil.Retry(NewPostgresErrorClassifier(), func() error {
 		return row.Scan(&metric.ID, &metric.MType, &metric.Value, &metric.Delta)
 	})
 	if err != nil {
@@ -104,7 +104,7 @@ func (db *Database) AllMetrics() []models.Metrics {
 	sql := "SELECT metric_name, metric_type, metric_value, metric_delta FROM metrics"
 	var rows pgx.Rows
 	var err error
-	err = errutil.Retry(&PostgresErrorClassifier{}, func() error {
+	err = errutil.Retry(NewPostgresErrorClassifier(), func() error {
 		rows, err = db.conn.Query(context.Background(), sql)
 		return err
 	})
