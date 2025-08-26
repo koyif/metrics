@@ -79,7 +79,7 @@ func (c *MetricsClient) SendMetrics(metrics []models.Metrics) error {
 	updatesURL := c.baseURL.JoinPath("updates/")
 
 	var response *http.Response
-	err = errutil.Retry(NewHttpErrorClassifier(), func() error {
+	err = errutil.Retry(NewHTTPErrorClassifier(), func() error {
 		response, err = c.httpClient.Post(
 			updatesURL.String(),
 			"application/json",

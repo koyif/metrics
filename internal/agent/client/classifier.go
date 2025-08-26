@@ -6,13 +6,13 @@ import (
 	"syscall"
 )
 
-type HttpErrorClassifier struct{}
+type HTTPErrorClassifier struct{}
 
-func NewHttpErrorClassifier() *HttpErrorClassifier {
-	return &HttpErrorClassifier{}
+func NewHTTPErrorClassifier() *HTTPErrorClassifier {
+	return &HTTPErrorClassifier{}
 }
 
-func (c *HttpErrorClassifier) Classify(err error) errutil.RetriableErrorClassification {
+func (c *HTTPErrorClassifier) Classify(err error) errutil.RetriableErrorClassification {
 	if err == nil {
 		return errutil.NonRetriable
 	}
