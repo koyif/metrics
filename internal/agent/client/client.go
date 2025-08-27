@@ -87,24 +87,14 @@ func (c *MetricsClient) SendMetrics(metrics []models.Metrics) error {
 			bytes.NewReader(requestBody),
 		)
 
-		if err != nil {
-			if response != nil && response.Body != nil {
-				err := response.Body.Close()
-				if err != nil {
-					logger.Log.Error(errClosingResponseBody, logger.Error(err))
-				}
-			}
-			return err
-		}
-
-		defer func(Body io.ReadCloser) {
-			err := Body.Close()
+		if response != nil && response.Body != nil {
+			httpStatus = response.StatusCode
+			err := response.Body.Close()
 			if err != nil {
 				logger.Log.Error(errClosingResponseBody, logger.Error(err))
 			}
-		}(response.Body)
+		}
 
-		httpStatus = response.StatusCode
 		return err
 	})
 
