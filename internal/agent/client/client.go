@@ -80,6 +80,7 @@ func (c *MetricsClient) SendMetrics(metrics []models.Metrics) error {
 
 	var response *http.Response
 	err = errutil.Retry(NewHTTPErrorClassifier(), func() error {
+		// go vet: response cannot be closed here, because it will be closed in the outer function
 		response, err = c.httpClient.Post(
 			updatesURL.String(),
 			"application/json",
