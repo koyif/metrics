@@ -33,7 +33,13 @@ func New(ctx context.Context, url string) *Database {
 }
 
 func (db *Database) StoreMetric(metric models.Metrics) error {
-	sql := "INSERT INTO metrics (metric_name, metric_type, metric_value, metric_delta, updated_at) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (metric_name) DO UPDATE SET metric_value = $3, metric_delta = $4, updated_at = $5"
+	sql := `INSERT INTO metrics (metric_name, metric_type, metric_value, metric_delta, updated_at) 
+		VALUES ($1, $2, $3, $4, $5) ON CONFLICT (metric_name) DO UPDATE 
+		SET 
+		    metric_value = $3,
+			metric_delta = $4 + metrics.metric_delta, 
+			updated_at = $5
+		`
 
 	err := errutil.Retry(NewPostgresErrorClassifier(), func() error {
 		_, err := db.conn.Exec(context.Background(), sql, metric.ID, metric.MType, metric.Value, metric.Delta, time.Now())
