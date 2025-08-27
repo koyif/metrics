@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"time"
 )
 
 type MetricsClient struct {
@@ -78,23 +79,39 @@ func (c *MetricsClient) SendMetrics(metrics []models.Metrics) error {
 
 	updatesURL := c.baseURL.JoinPath("updates/")
 
+	return c.retry(updatesURL, requestBody)
+
+}
+
+func (c *MetricsClient) retry(updatesURL *url.URL, requestBody []byte) error {
+	maxAttempts := 3
+	var lastErr error
 	var response *http.Response
-	err = errutil.Retry(NewHTTPErrorClassifier(), func() error {
-		response, err = c.httpClient.Post(
+	var classifier = NewHTTPErrorClassifier()
+
+	for i := 0; i < maxAttempts; i++ {
+		response, lastErr = c.httpClient.Post(
 			updatesURL.String(),
 			"application/json",
 			bytes.NewReader(requestBody),
 		)
-		if err != nil {
-			return err
-		}
-		err := response.Body.Close()
-		if err != nil {
-			logger.Log.Error(errClosingResponseBody, logger.Error(err))
-		}
+		if lastErr == nil {
+			err := response.Body.Close()
+			if err != nil {
+				logger.Log.Error(errClosingResponseBody, logger.Error(err))
+			}
 
-		return nil
-	})
+			return nil
+		} else {
+			if classifier.Classify(lastErr) == errutil.NonRetriable {
+				return lastErr
+			}
 
-	return nil
+			logger.Log.Warn("failed to execute query, retrying")
+			time.Sleep(time.Duration(i) * ((time.Second * 2) + 1))
+			continue
+		}
+	}
+
+	return fmt.Errorf("failed to execute query after %d attempts, last error: %w", maxAttempts, lastErr)
 }
