@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"errors"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"log"
 	"time"
 
@@ -14,7 +15,7 @@ import (
 )
 
 type Database struct {
-	conn *pgx.Conn
+	pool *pgxpool.Pool
 }
 
 func New(ctx context.Context, url string) *Database {
@@ -22,13 +23,13 @@ func New(ctx context.Context, url string) *Database {
 		log.Fatal("database url is empty")
 	}
 
-	conn, err := pgx.Connect(ctx, url)
+	conn, err := pgxpool.New(ctx, url)
 	if err != nil {
 		log.Fatalf("failed to connect to database: %v", err)
 	}
 
 	return &Database{
-		conn: conn,
+		pool: conn,
 	}
 }
 
@@ -42,7 +43,7 @@ func (db *Database) StoreMetric(metric models.Metrics) error {
 		`
 
 	err := errutil.Retry(NewPostgresErrorClassifier(), func() error {
-		_, err := db.conn.Exec(context.Background(), sql, metric.ID, metric.MType, metric.Value, metric.Delta, time.Now())
+		_, err := db.pool.Exec(context.Background(), sql, metric.ID, metric.MType, metric.Value, metric.Delta, time.Now())
 		return err
 	})
 	if err != nil {
@@ -61,7 +62,13 @@ func (db *Database) StoreAll(metrics []models.Metrics) error {
 		    updated_at = $5
 		`
 
-	_, err := db.conn.Prepare(context.Background(), "insert_metric", sql)
+	ctx := context.Background()
+	tx, err := db.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Prepare(ctx, "insert_metric", sql)
 	if err != nil {
 		return err
 	}
@@ -71,10 +78,11 @@ func (db *Database) StoreAll(metrics []models.Metrics) error {
 	for _, metric := range metrics {
 		batch.Queue("insert_metric", metric.ID, metric.MType, metric.Value, metric.Delta, updatedAt)
 	}
-	br := db.conn.SendBatch(context.Background(), batch)
+	br := tx.SendBatch(ctx, batch)
 
 	err = errutil.Retry(NewPostgresErrorClassifier(), func() error {
-		return br.Close()
+		errBr := br.Close()
+		return errors.Join(errBr, tx.Commit(ctx))
 	})
 	if err != nil {
 		return err
@@ -91,7 +99,7 @@ func (db *Database) StoreAll(metrics []models.Metrics) error {
 func (db *Database) Metric(metricName string) (models.Metrics, error) {
 	sql := "SELECT metric_name, metric_type, metric_value, metric_delta FROM metrics WHERE metric_name = $1"
 	var metric models.Metrics
-	row := db.conn.QueryRow(context.Background(), sql, metricName)
+	row := db.pool.QueryRow(context.Background(), sql, metricName)
 
 	err := errutil.Retry(NewPostgresErrorClassifier(), func() error {
 		return row.Scan(&metric.ID, &metric.MType, &metric.Value, &metric.Delta)
@@ -111,7 +119,7 @@ func (db *Database) AllMetrics() []models.Metrics {
 	var rows pgx.Rows
 	var err error
 	err = errutil.Retry(NewPostgresErrorClassifier(), func() error {
-		rows, err = db.conn.Query(context.Background(), sql)
+		rows, err = db.pool.Query(context.Background(), sql)
 		return err
 	})
 	if err != nil {
@@ -135,5 +143,5 @@ func (db *Database) AllMetrics() []models.Metrics {
 }
 
 func (db *Database) Ping(ctx context.Context) error {
-	return db.conn.Ping(ctx)
+	return db.pool.Ping(ctx)
 }

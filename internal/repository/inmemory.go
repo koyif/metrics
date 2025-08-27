@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"errors"
 	"github.com/koyif/metrics/internal/models"
 	"github.com/koyif/metrics/internal/repository/dberror"
@@ -80,4 +81,8 @@ func (m *MetricsRepository) StoreAll(metrics []models.Metrics) error {
 
 	return nil
 
+}
+
+func (m *MetricsRepository) Ping(_ context.Context) error {
+	return nil
 }

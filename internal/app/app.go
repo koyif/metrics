@@ -12,7 +12,6 @@ import (
 	"github.com/koyif/metrics/internal/persistence/database"
 	"github.com/koyif/metrics/internal/repository"
 	"github.com/koyif/metrics/internal/service"
-	"github.com/koyif/metrics/internal/service/ping"
 )
 
 type metricsRepository interface {
@@ -23,23 +22,21 @@ type metricsRepository interface {
 	Gauge(metricName string) (float64, error)
 	AllGauges() map[string]float64
 	StoreAll(metrics []models.Metrics) error
+	Ping(ctx context.Context) error
 }
 
 type App struct {
 	Config         *config.Config
 	MetricsService *service.MetricsService
-	PingService    *ping.Service
 }
 
 func New(ctx context.Context, wg *sync.WaitGroup, cfg *config.Config) *App {
 	var metricsRepository metricsRepository
-	var pingService *ping.Service
 	var fileService *service.FileService
 
 	if cfg.Storage.DatabaseURL != "" {
 		wg.Done()
 		db := database.New(ctx, cfg.Storage.DatabaseURL)
-		pingService = ping.NewService(db)
 		metricsRepository = repository.NewDatabaseRepository(db)
 	} else {
 		fileRepository := repository.NewFileRepository(cfg.Storage.FileStoragePath)
@@ -59,6 +56,5 @@ func New(ctx context.Context, wg *sync.WaitGroup, cfg *config.Config) *App {
 	return &App{
 		Config:         cfg,
 		MetricsService: metricsService,
-		PingService:    pingService,
 	}
 }

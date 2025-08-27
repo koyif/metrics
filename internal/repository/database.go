@@ -1,12 +1,16 @@
 package repository
 
-import models "github.com/koyif/metrics/internal/models"
+import (
+	"context"
+	models "github.com/koyif/metrics/internal/models"
+)
 
 type database interface {
 	StoreMetric(metric models.Metrics) error
 	StoreAll(metrics []models.Metrics) error
 	Metric(metricName string) (models.Metrics, error)
 	AllMetrics() []models.Metrics
+	Ping(ctx context.Context) error
 }
 
 type DatabaseRepository struct {
@@ -83,4 +87,8 @@ func (r DatabaseRepository) AllGauges() map[string]float64 {
 	}
 
 	return gauges
+}
+
+func (r DatabaseRepository) Ping(ctx context.Context) error {
+	return r.db.Ping(ctx)
 }

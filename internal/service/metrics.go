@@ -1,6 +1,9 @@
 package service
 
-import "github.com/koyif/metrics/internal/models"
+import (
+	"context"
+	"github.com/koyif/metrics/internal/models"
+)
 
 type repository interface {
 	StoreCounter(metricName string, value int64) error
@@ -10,6 +13,7 @@ type repository interface {
 	Gauge(metricName string) (float64, error)
 	AllGauges() map[string]float64
 	StoreAll(metrics []models.Metrics) error
+	Ping(ctx context.Context) error
 }
 
 type fileService interface {
@@ -58,4 +62,8 @@ func (m MetricsService) Gauge(metricName string) (float64, error) {
 
 func (m MetricsService) AllGauges() map[string]float64 {
 	return m.repository.AllGauges()
+}
+
+func (m MetricsService) Ping(ctx context.Context) error {
+	return m.repository.Ping(ctx)
 }

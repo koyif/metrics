@@ -96,6 +96,12 @@ func (c *MetricsClient) retry(updatesURL *url.URL, requestBody []byte) error {
 			bytes.NewReader(requestBody),
 		)
 		if lastErr == nil {
+			if response.StatusCode >= 500 {
+				logger.Log.Warn("failed to execute query, retrying")
+				time.Sleep(time.Duration(i) * ((time.Second * 2) + 1))
+				continue
+			}
+
 			err := response.Body.Close()
 			if err != nil {
 				logger.Log.Error(errClosingResponseBody, logger.Error(err))
