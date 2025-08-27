@@ -79,34 +79,27 @@ func (c *MetricsClient) SendMetrics(metrics []models.Metrics) error {
 	updatesURL := c.baseURL.JoinPath("updates/")
 
 	var response *http.Response
+	var httpStatus int
 	err = errutil.Retry(NewHTTPErrorClassifier(), func() error {
-		// go vet: response cannot be closed here, because it will be closed in the outer function
 		response, err = c.httpClient.Post(
 			updatesURL.String(),
 			"application/json",
 			bytes.NewReader(requestBody),
 		)
-		return err
-	})
-	if err != nil {
-		if response != nil && response.Body != nil {
-			err := response.Body.Close()
+
+		defer func(Body io.ReadCloser) {
+			err := Body.Close()
 			if err != nil {
 				logger.Log.Error(errClosingResponseBody, logger.Error(err))
 			}
-		}
+		}(response.Body)
+
+		httpStatus = response.StatusCode
 		return err
-	}
+	})
 
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			logger.Log.Error(errClosingResponseBody, logger.Error(err))
-		}
-	}(response.Body)
-
-	if response.StatusCode != http.StatusOK {
-		return fmt.Errorf("incorrect response status from Metrics Server: %d", response.StatusCode)
+	if httpStatus != http.StatusOK {
+		return fmt.Errorf("incorrect response status from Metrics Server: %d", httpStatus)
 	}
 
 	return nil
