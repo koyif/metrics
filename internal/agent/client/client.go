@@ -79,7 +79,6 @@ func (c *MetricsClient) SendMetrics(metrics []models.Metrics) error {
 	updatesURL := c.baseURL.JoinPath("updates/")
 
 	var response *http.Response
-	var httpStatus int
 	err = errutil.Retry(NewHTTPErrorClassifier(), func() error {
 		response, err = c.httpClient.Post(
 			updatesURL.String(),
@@ -89,16 +88,13 @@ func (c *MetricsClient) SendMetrics(metrics []models.Metrics) error {
 		if err != nil {
 			return err
 		}
-		defer response.Body.Close()
-
-		httpStatus = response.StatusCode
+		err := response.Body.Close()
+		if err != nil {
+			logger.Log.Error(errClosingResponseBody, logger.Error(err))
+		}
 
 		return nil
 	})
-
-	if httpStatus != http.StatusOK {
-		return fmt.Errorf("incorrect response status from Metrics Server: %d", httpStatus)
-	}
 
 	return nil
 }
