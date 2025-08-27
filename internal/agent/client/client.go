@@ -86,13 +86,15 @@ func (c *MetricsClient) SendMetrics(metrics []models.Metrics) error {
 			"application/json",
 			bytes.NewReader(requestBody),
 		)
-
-		if response != nil && response.Body != nil {
-			httpStatus = response.StatusCode
-			err := response.Body.Close()
+		defer func(Body io.ReadCloser) {
+			err := Body.Close()
 			if err != nil {
 				logger.Log.Error(errClosingResponseBody, logger.Error(err))
 			}
+		}(response.Body)
+
+		if response != nil {
+			httpStatus = response.StatusCode
 		}
 
 		return err
