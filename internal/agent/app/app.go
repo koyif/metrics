@@ -2,16 +2,17 @@ package app
 
 import (
 	"context"
+	"github.com/koyif/metrics/pkg/logger"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+
 	"github.com/koyif/metrics/internal/agent"
 	"github.com/koyif/metrics/internal/agent/client"
 	"github.com/koyif/metrics/internal/agent/config"
 	"github.com/koyif/metrics/internal/agent/scraper"
 	"github.com/koyif/metrics/internal/agent/storage"
-	"log/slog"
-	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
 )
 
 type App struct {
@@ -43,7 +44,7 @@ func (app *App) Run() error {
 	a.Start(ctx)
 
 	<-stop
-	slog.Info("shutting down")
+	logger.Log.Info("shutting down")
 
 	return nil
 }

@@ -28,3 +28,7 @@ func String(key, value string) zap.Field {
 func Int(key string, value int) zap.Field {
 	return zap.Int(key, value)
 }
+
+func Float(key string, value float64) zap.Field {
+	return zap.Float64(key, value)
+}

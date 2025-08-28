@@ -3,18 +3,20 @@ package metrics
 import (
 	"encoding/json"
 	"errors"
-
+	"fmt"
+	"github.com/koyif/metrics/internal/models"
+	"github.com/koyif/metrics/internal/repository/dberror"
 	"net/http"
 
 	"github.com/koyif/metrics/internal/config"
 	"github.com/koyif/metrics/internal/handler"
-	"github.com/koyif/metrics/internal/repository"
 	"github.com/koyif/metrics/pkg/dto"
 )
 
 type metricsStorer interface {
 	StoreCounter(metricName string, value int64) error
 	StoreGauge(metricName string, value float64) error
+	StoreAll(metrics []models.Metrics) error
 	Persist() error
 }
 
@@ -24,6 +26,11 @@ type metricsGetter interface {
 }
 
 type StoreHandler struct {
+	service metricsStorer
+	cfg     *config.Config
+}
+
+type StoreAllHandler struct {
 	service metricsStorer
 	cfg     *config.Config
 }
@@ -39,6 +46,13 @@ func NewStoreHandler(service metricsStorer, cfg *config.Config) *StoreHandler {
 	}
 }
 
+func NewStoreAllHandler(service metricsStorer, cfg *config.Config) *StoreAllHandler {
+	return &StoreAllHandler{
+		service: service,
+		cfg:     cfg,
+	}
+}
+
 func NewGetHandler(service metricsGetter) *GetHandler {
 	return &GetHandler{
 		service: service,
@@ -46,113 +60,142 @@ func NewGetHandler(service metricsGetter) *GetHandler {
 }
 
 func (sh StoreHandler) Handle(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		handler.InvalidMethodError(w, r)
+	var m dto.Metrics
+
+	if err := json.NewDecoder(r.Body).Decode(&m); err != nil {
+		handler.BadRequest(w, r.RequestURI, "incorrect JSON format")
 		return
 	}
 
-	var metrics dto.Metrics
-
-	err := json.NewDecoder(r.Body).Decode(&metrics)
-	if err != nil {
-		handler.IncorrectJSONFormatError(w, r)
+	if m.ID == "" {
+		handler.NotFound(w, r, "")
 		return
 	}
 
-	if metrics.ID == "" {
-		handler.MetricNameNotPresentError(w, r)
-		return
-	}
-
-	switch metrics.MType {
+	switch m.MType {
 	case dto.CounterMetricsType:
-		sh.handleCounter(w, metrics.ID, metrics.Delta)
+		sh.handleCounter(w, m.ID, m.Delta)
 	case dto.GaugeMetricsType:
-		sh.handleGauge(w, metrics.ID, metrics.Value)
+		sh.handleGauge(w, m.ID, m.Value)
 	default:
 		handler.UnknownMetricTypeHandler(w, r)
 		return
 	}
 
 	if sh.cfg.Storage.StoreInterval == 0 {
-		sh.service.Persist()
+		err := sh.service.Persist()
+		if err != nil {
+			handler.BadRequest(w, r.RequestURI, "failed to persist metrics")
+			return
+		}
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func (sh StoreAllHandler) Handle(w http.ResponseWriter, r *http.Request) {
+	var m []dto.Metrics
+
+	if err := json.NewDecoder(r.Body).Decode(&m); err != nil {
+		handler.BadRequest(w, r.RequestURI, "incorrect JSON format")
+		return
+	}
+
+	if len(m) == 0 {
+		handler.NotFound(w, r, "")
+		return
+	}
+
+	metrics := make([]models.Metrics, len(m))
+
+	for i, metric := range m {
+		if metric.ID == "" {
+			handler.NotFound(w, r, "")
+			return
+		}
+
+		metrics[i] = models.Metrics{
+			ID:    metric.ID,
+			MType: metric.MType,
+			Value: metric.Value,
+			Delta: metric.Delta,
+		}
+	}
+
+	err := sh.service.StoreAll(metrics)
+	if err != nil {
+		handler.InternalServerError(w, err, "failed to store metrics")
+		return
 	}
 
 	w.WriteHeader(http.StatusOK)
 }
 
 func (gh GetHandler) Handle(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		handler.InvalidMethodError(w, r)
+	var m dto.Metrics
+
+	if err := json.NewDecoder(r.Body).Decode(&m); err != nil {
+		handler.BadRequest(w, r.RequestURI, "incorrect JSON format")
 		return
 	}
 
-	var metrics dto.Metrics
-
-	err := json.NewDecoder(r.Body).Decode(&metrics)
-	if err != nil {
-		handler.IncorrectJSONFormatError(w, r)
-		return
-	}
-
-	if metrics.ID == "" {
-		handler.MetricNameNotPresentError(w, r)
+	if m.ID == "" {
+		handler.NotFound(w, r, "")
 		return
 	}
 
 	var valErr error
-	switch metrics.MType {
+	switch m.MType {
 	case dto.CounterMetricsType:
-		del, err := gh.service.Counter(metrics.ID)
+		del, err := gh.service.Counter(m.ID)
 		valErr = err
-		metrics.Delta = &del
+		m.Delta = &del
 	case dto.GaugeMetricsType:
-		val, err := gh.service.Gauge(metrics.ID)
+		val, err := gh.service.Gauge(m.ID)
 		valErr = err
-		metrics.Value = &val
+		m.Value = &val
 	default:
 		handler.UnknownMetricTypeHandler(w, r)
 		return
 	}
 
-	if valErr != nil && errors.Is(valErr, repository.ErrValueNotFound) {
-		handler.ValueNotFoundError(w, metrics.ID)
+	if valErr != nil && errors.Is(valErr, dberror.ErrValueNotFound) {
+		handler.NotFound(w, r, fmt.Sprintf("value not found in storage: %s", m.ID))
 		return
-	}
-
-	response, err := json.Marshal(metrics)
-	if err != nil {
-		handler.MarshallingError(w, err)
+	} else if valErr != nil {
+		handler.InternalServerError(w, valErr, "failed to get metric value")
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(response)
+	if err := json.NewEncoder(w).Encode(m); err != nil {
+		handler.InternalServerError(w, err, "failed to encode response")
+	}
 }
 
 func (sh StoreHandler) handleCounter(w http.ResponseWriter, metricName string, value *int64) {
 	if value == nil {
-		handler.IncorrectValueError(w, "nil")
+		handler.BadRequest(w, "", "incorrect value format: nil")
 		return
 	}
 
 	err := sh.service.StoreCounter(metricName, *value)
 	if err != nil {
-		handler.StoreError(w, err)
+		handler.InternalServerError(w, err, "failed to store metric")
 		return
 	}
 }
 
 func (sh StoreHandler) handleGauge(w http.ResponseWriter, metricName string, value *float64) {
 	if value == nil {
-		handler.IncorrectValueError(w, "nil")
+		handler.BadRequest(w, "", "incorrect value format: nil")
 		return
 	}
 
 	err := sh.service.StoreGauge(metricName, *value)
 	if err != nil {
-		handler.StoreError(w, err)
+		handler.InternalServerError(w, err, "failed to store metric")
 		return
 	}
 }

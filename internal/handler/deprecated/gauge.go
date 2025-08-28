@@ -1,8 +1,10 @@
-package handler
+package deprecated
 
 import (
 	"errors"
-	"github.com/koyif/metrics/internal/repository"
+	"fmt"
+	"github.com/koyif/metrics/internal/handler"
+	"github.com/koyif/metrics/internal/repository/dberror"
 	"net/http"
 	"strconv"
 )
@@ -36,26 +38,21 @@ func NewGaugesGetHandler(service gaugeGetter) *GaugesGetHandler {
 }
 
 func (h GaugesPostHandler) Handle(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		InvalidMethodError(w, r)
-		return
-	}
-
-	metricName := r.PathValue("metric")
+	mn := r.PathValue("metric")
 	value := r.PathValue("value")
-	if metricName == "" || value == "" {
-		MetricNameNotPresentError(w, r)
+	if mn == "" || value == "" {
+		handler.NotFound(w, r, "metric name not present")
 		return
 	}
 
-	metricValue, err := strconv.ParseFloat(value, 64)
+	v, err := strconv.ParseFloat(value, 64)
 	if err != nil {
-		IncorrectValueError(w, value)
+		handler.BadRequest(w, r.RequestURI, fmt.Sprintf("incorrect value format: %s", value))
 		return
 	}
 
-	if err := h.service.StoreGauge(metricName, metricValue); err != nil {
-		StoreError(w, err)
+	if err := h.service.StoreGauge(mn, v); err != nil {
+		handler.InternalServerError(w, err, "failed to store metric")
 		return
 	}
 
@@ -63,20 +60,15 @@ func (h GaugesPostHandler) Handle(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h GaugesGetHandler) Handle(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		InvalidMethodError(w, r)
+	mn := r.PathValue("metric")
+	if mn == "" {
+		handler.NotFound(w, r, "")
 		return
 	}
 
-	metricName := r.PathValue("metric")
-	if metricName == "" {
-		MetricNameNotPresentError(w, r)
-		return
-	}
-
-	value, err := h.service.Gauge(metricName)
-	if err != nil && errors.Is(err, repository.ErrValueNotFound) {
-		ValueNotFoundError(w, metricName)
+	value, err := h.service.Gauge(mn)
+	if err != nil && errors.Is(err, dberror.ErrValueNotFound) {
+		handler.NotFound(w, r, "value not found in storage")
 		return
 	}
 

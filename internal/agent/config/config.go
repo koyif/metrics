@@ -2,7 +2,7 @@ package config
 
 import (
 	"flag"
-	"log/slog"
+	"github.com/koyif/metrics/pkg/logger"
 	"os"
 	"strconv"
 	"time"
@@ -53,14 +53,14 @@ func loadEnv(cfg *Config) {
 	if reportIntervalEnv != "" {
 		err := secondsToDuration(&cfg.ReportInterval)(reportIntervalEnv)
 		if err != nil {
-			slog.Error("couldn't get environment variable", slog.String("env variable", ReportIntervalEnvVarName))
+			logger.Log.Error("couldn't get environment variable", logger.Error(err))
 		}
 	}
 	pollIntervalEnv := os.Getenv(PollIntervalEnvVarName)
 	if pollIntervalEnv != "" {
 		err := secondsToDuration(&cfg.PollInterval)(pollIntervalEnv)
 		if err != nil {
-			slog.Error("couldn't get environment variable", slog.String("env variable", PollIntervalEnvVarName))
+			logger.Log.Error("couldn't get environment variable", logger.Error(err))
 		}
 	}
 }

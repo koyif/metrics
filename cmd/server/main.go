@@ -3,13 +3,14 @@ package main
 import (
 	"context"
 	"errors"
-	"github.com/koyif/metrics/internal/app"
-	"github.com/koyif/metrics/internal/app/logger"
-	"github.com/koyif/metrics/internal/config"
+	"github.com/koyif/metrics/pkg/logger"
 	"net/http"
 	"os/signal"
 	"sync"
 	"syscall"
+
+	"github.com/koyif/metrics/internal/app"
+	"github.com/koyif/metrics/internal/config"
 )
 
 func main() {
@@ -17,6 +18,8 @@ func main() {
 	if err := logger.Initialize(); err != nil {
 		logger.Log.Fatal("error starting logger", logger.Error(err))
 	}
+
+	runMigrations(cfg)
 
 	wg := sync.WaitGroup{}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -33,6 +36,11 @@ func main() {
 	<-ctx.Done()
 	logger.Log.Info("shutting down")
 	wg.Wait()
+}
+
+func runMigrations(cfg *config.Config) {
+	logger.Log.Info("running database migrations")
+	app.RunMigrations(cfg.Storage.DatabaseURL)
 }
 
 func startServer(a *app.App) {

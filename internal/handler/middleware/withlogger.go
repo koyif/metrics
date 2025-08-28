@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"fmt"
-	"github.com/koyif/metrics/internal/app/logger"
+	"github.com/koyif/metrics/pkg/logger"
 	"net/http"
 	"time"
 )

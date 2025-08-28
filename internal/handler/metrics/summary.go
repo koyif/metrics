@@ -1,6 +1,7 @@
-package handler
+package metrics
 
 import (
+	"github.com/koyif/metrics/internal/handler"
 	"html/template"
 	"net/http"
 	"strconv"
@@ -35,12 +36,7 @@ func NewSummaryHandler(service summaryGetter) *SummaryHandler {
 	}
 }
 
-func (h *SummaryHandler) Handle(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		InvalidMethodError(w, r)
-		return
-	}
-
+func (h *SummaryHandler) Handle(w http.ResponseWriter, _ *http.Request) {
 	res := make(map[string]string)
 
 	for k, v := range h.service.AllGauges() {
@@ -53,14 +49,14 @@ func (h *SummaryHandler) Handle(w http.ResponseWriter, r *http.Request) {
 
 	tt, err := template.New("summary").Parse(summaryHTML)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		handler.InternalServerError(w, err, "failed to parse template")
 		return
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
 	if err = tt.Execute(w, res); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		handler.InternalServerError(w, err, "failed to execute template")
 		return
 	}
 }

@@ -2,23 +2,24 @@ package agent
 
 import (
 	"context"
-	"fmt"
-	"github.com/koyif/metrics/internal/agent/config"
-	"log/slog"
+	"github.com/koyif/metrics/pkg/logger"
 	"math/rand/v2"
-	"strconv"
 	"time"
+
+	"github.com/koyif/metrics/internal/agent/config"
+	"github.com/koyif/metrics/internal/models"
 )
 
 type scraper interface {
 	Scrap()
 	Count() int64
-	Metrics() map[string]float64
+	Metrics() []models.Metrics
 	Reset()
 }
 
 type metricsClient interface {
-	Send(metricType, metricName, value string) error
+	SendMetric(metric models.Metrics) error
+	SendMetrics(metrics []models.Metrics) error
 }
 
 type Agent struct {
@@ -61,38 +62,31 @@ func (a *Agent) pollMetrics() {
 }
 
 func (a *Agent) reportMetrics() {
-	gaugeMetrics := a.scraper.Metrics()
-	gaugeMetrics["RandomValue"] = rand.Float64()
+	metrics := a.scraper.Metrics()
+	r := rand.Float64()
+	c := a.scraper.Count()
 
-	counterMetrics := map[string]int64{
-		"PollCount": a.scraper.Count(),
+	metrics = append(metrics, []models.Metrics{
+		{
+			ID:    "RandomValue",
+			MType: models.Gauge,
+			Value: &r,
+		},
+		{
+			ID:    "PollCount",
+			MType: models.Counter,
+			Delta: &c,
+		}}...,
+	)
+
+	err := a.metricsClient.SendMetrics(metrics)
+	if err != nil {
+		logger.Log.Error("error sending metrics", logger.Error(err))
+		return
 	}
 
-	sent := 0
+	logger.Log.Info("sent metrics", logger.Int("count", len(metrics)))
 
-	for k, v := range gaugeMetrics {
-		slog.Debug(fmt.Sprintf("sending gauge: %s: %f", k, v))
-		value := strconv.FormatFloat(v, 'f', -1, 64)
+	a.scraper.Reset()
 
-		if err := a.metricsClient.Send("gauge", k, value); err != nil {
-			slog.Error(fmt.Sprintf("%s: %v", k, err))
-		} else {
-			sent++
-		}
-	}
-
-	for k, v := range counterMetrics {
-		slog.Debug(fmt.Sprintf("sending counter: %s: %d", k, v))
-		value := strconv.FormatInt(v, 10)
-
-		if err := a.metricsClient.Send("counter", k, value); err != nil {
-			slog.Error(fmt.Sprintf("%s: %v", k, err))
-		} else {
-			sent++
-		}
-	}
-
-	if sent > 0 {
-		a.scraper.Reset()
-	}
 }
