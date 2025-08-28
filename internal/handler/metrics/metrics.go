@@ -3,14 +3,26 @@ package metrics
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
-	"github.com/koyif/metrics/internal/models"
-	"github.com/koyif/metrics/internal/repository/dberror"
 	"net/http"
 
+	"github.com/koyif/metrics/internal/models"
+	"github.com/koyif/metrics/internal/repository/dberror"
+
 	"github.com/koyif/metrics/internal/config"
-	"github.com/koyif/metrics/internal/handler"
 	"github.com/koyif/metrics/pkg/dto"
+	"github.com/koyif/metrics/pkg/logger"
+)
+
+const (
+	incorrectJSONFormatMessage         = "incorrect JSON format"
+	metricIDEmptyErrorMessage          = "metric ID cannot be empty"
+	unknownMetricTypeMessage           = "unknown metric type"
+	emptyMetricsErrorMessage           = "metrics array cannot be empty"
+	failedToPersistMetricsErrorMessage = "failed to persist metrics"
+	valueNotFoundErrorMessage          = "value not found in storage"
+	failedToGetMetricValueErrorMessage = "failed to get metric value"
+	failedToEncodeErrorMessage         = "failed to encode response"
+	nilValueErrorMessage               = "incorrect value format: nil"
 )
 
 type metricsStorer interface {
@@ -63,29 +75,36 @@ func (sh StoreHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	var m dto.Metrics
 
 	if err := json.NewDecoder(r.Body).Decode(&m); err != nil {
-		handler.BadRequest(w, r.RequestURI, "incorrect JSON format")
+		logger.Log.Warn(incorrectJSONFormatMessage, logger.String("URI", r.RequestURI))
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+
 		return
 	}
 
 	if m.ID == "" {
-		handler.NotFound(w, r, "")
+		logger.Log.Warn(metricIDEmptyErrorMessage, logger.String("URI", r.RequestURI))
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+
 		return
 	}
 
 	switch m.MType {
 	case dto.CounterMetricsType:
-		sh.handleCounter(w, m.ID, m.Delta)
+		sh.handleCounter(w, r, m.ID, m.Delta)
 	case dto.GaugeMetricsType:
-		sh.handleGauge(w, m.ID, m.Value)
+		sh.handleGauge(w, r, m.ID, m.Value)
 	default:
-		handler.UnknownMetricTypeHandler(w, r)
+		logger.Log.Warn(unknownMetricTypeMessage, logger.String("URI", r.RequestURI))
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+
 		return
 	}
 
 	if sh.cfg.Storage.StoreInterval == 0 {
-		err := sh.service.Persist()
-		if err != nil {
-			handler.BadRequest(w, r.RequestURI, "failed to persist metrics")
+		if err := sh.service.Persist(); err != nil {
+			logger.Log.Warn(failedToPersistMetricsErrorMessage, logger.Error(err))
+			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+
 			return
 		}
 	}
@@ -97,34 +116,45 @@ func (sh StoreAllHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	var m []dto.Metrics
 
 	if err := json.NewDecoder(r.Body).Decode(&m); err != nil {
-		handler.BadRequest(w, r.RequestURI, "incorrect JSON format")
+		logger.Log.Warn(incorrectJSONFormatMessage, logger.String("URI", r.RequestURI))
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+
 		return
 	}
 
 	if len(m) == 0 {
-		handler.NotFound(w, r, "")
+		logger.Log.Warn(emptyMetricsErrorMessage, logger.String("URI", r.RequestURI))
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+
 		return
 	}
 
-	metrics := make([]models.Metrics, len(m))
+	metrics := make([]models.Metrics, 0, len(m))
 
-	for i, metric := range m {
+	for _, metric := range m {
 		if metric.ID == "" {
-			handler.NotFound(w, r, "")
+			logger.Log.Warn(metricIDEmptyErrorMessage, logger.String("URI", r.RequestURI))
+			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+
 			return
 		}
 
-		metrics[i] = models.Metrics{
+		metrics = append(metrics, models.Metrics{
 			ID:    metric.ID,
 			MType: metric.MType,
-			Value: metric.Value,
 			Delta: metric.Delta,
-		}
+			Value: metric.Value,
+		})
 	}
 
-	err := sh.service.StoreAll(metrics)
-	if err != nil {
-		handler.InternalServerError(w, err, "failed to store metrics")
+	if err := sh.service.StoreAll(metrics); err != nil {
+		logger.Log.Warn(failedToPersistMetricsErrorMessage, logger.Error(err))
+		http.Error(
+			w,
+			http.StatusText(http.StatusInternalServerError),
+			http.StatusInternalServerError,
+		)
+
 		return
 	}
 
@@ -135,12 +165,16 @@ func (gh GetHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	var m dto.Metrics
 
 	if err := json.NewDecoder(r.Body).Decode(&m); err != nil {
-		handler.BadRequest(w, r.RequestURI, "incorrect JSON format")
+		logger.Log.Warn(incorrectJSONFormatMessage, logger.String("URI", r.RequestURI))
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+
 		return
 	}
 
 	if m.ID == "" {
-		handler.NotFound(w, r, "")
+		logger.Log.Warn(metricIDEmptyErrorMessage, logger.String("URI", r.RequestURI))
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+
 		return
 	}
 
@@ -155,47 +189,76 @@ func (gh GetHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		valErr = err
 		m.Value = &val
 	default:
-		handler.UnknownMetricTypeHandler(w, r)
+		logger.Log.Warn("unknown metric type", logger.String("URI", r.RequestURI))
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+
 		return
 	}
 
 	if valErr != nil && errors.Is(valErr, dberror.ErrValueNotFound) {
-		handler.NotFound(w, r, fmt.Sprintf("value not found in storage: %s", m.ID))
+		logger.Log.Warn(valueNotFoundErrorMessage, logger.String("URI", r.RequestURI), logger.String("ID", m.ID))
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+
 		return
 	} else if valErr != nil {
-		handler.InternalServerError(w, valErr, "failed to get metric value")
+		logger.Log.Warn(failedToGetMetricValueErrorMessage, logger.Error(valErr))
+		http.Error(
+			w,
+			http.StatusText(http.StatusInternalServerError),
+			http.StatusInternalServerError,
+		)
+
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(m); err != nil {
-		handler.InternalServerError(w, err, "failed to encode response")
+		logger.Log.Warn(failedToEncodeErrorMessage, logger.Error(err))
+		http.Error(
+			w,
+			http.StatusText(http.StatusInternalServerError),
+			http.StatusInternalServerError,
+		)
 	}
 }
 
-func (sh StoreHandler) handleCounter(w http.ResponseWriter, metricName string, value *int64) {
+func (sh StoreHandler) handleCounter(w http.ResponseWriter, r *http.Request, metricName string, value *int64) {
 	if value == nil {
-		handler.BadRequest(w, "", "incorrect value format: nil")
+		logger.Log.Warn(nilValueErrorMessage, logger.String("URI", r.RequestURI))
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+
 		return
 	}
 
-	err := sh.service.StoreCounter(metricName, *value)
-	if err != nil {
-		handler.InternalServerError(w, err, "failed to store metric")
+	if err := sh.service.StoreCounter(metricName, *value); err != nil {
+		logger.Log.Warn(failedToPersistMetricsErrorMessage, logger.Error(err))
+		http.Error(
+			w,
+			http.StatusText(http.StatusInternalServerError),
+			http.StatusInternalServerError,
+		)
+
 		return
 	}
 }
 
-func (sh StoreHandler) handleGauge(w http.ResponseWriter, metricName string, value *float64) {
+func (sh StoreHandler) handleGauge(w http.ResponseWriter, r *http.Request, metricName string, value *float64) {
 	if value == nil {
-		handler.BadRequest(w, "", "incorrect value format: nil")
+		logger.Log.Warn(nilValueErrorMessage, logger.String("URI", r.RequestURI))
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+
 		return
 	}
 
-	err := sh.service.StoreGauge(metricName, *value)
-	if err != nil {
-		handler.InternalServerError(w, err, "failed to store metric")
+	if err := sh.service.StoreGauge(metricName, *value); err != nil {
+		logger.Log.Warn(failedToPersistMetricsErrorMessage, logger.Error(err))
+		http.Error(
+			w,
+			http.StatusText(http.StatusInternalServerError),
+			http.StatusInternalServerError,
+		)
+
 		return
 	}
 }
