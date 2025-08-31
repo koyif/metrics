@@ -2,9 +2,10 @@ package agent
 
 import (
 	"context"
-	"github.com/koyif/metrics/pkg/logger"
 	"math/rand/v2"
 	"time"
+
+	"github.com/koyif/metrics/pkg/logger"
 
 	"github.com/koyif/metrics/internal/agent/config"
 	"github.com/koyif/metrics/internal/models"
@@ -38,8 +39,8 @@ func New(cfg *config.Config, scraper scraper, cl metricsClient) *Agent {
 
 func (a *Agent) Start(ctx context.Context) {
 	go func() {
-		pollTicker := time.NewTicker(a.cfg.PollInterval)
-		reportTicker := time.NewTicker(a.cfg.ReportInterval)
+		pollTicker := time.NewTicker(a.cfg.PollInterval.Value())
+		reportTicker := time.NewTicker(a.cfg.ReportInterval.Value())
 
 		for {
 			select {

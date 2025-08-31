@@ -3,11 +3,13 @@ package main
 import (
 	"context"
 	"errors"
-	"github.com/koyif/metrics/pkg/logger"
+	"log"
 	"net/http"
 	"os/signal"
 	"sync"
 	"syscall"
+
+	"github.com/koyif/metrics/pkg/logger"
 
 	"github.com/koyif/metrics/internal/app"
 	"github.com/koyif/metrics/internal/config"
@@ -16,7 +18,7 @@ import (
 func main() {
 	cfg := config.Load()
 	if err := logger.Initialize(); err != nil {
-		logger.Log.Fatal("error starting logger", logger.Error(err))
+		log.Fatalf("error starting logger: %v", err)
 	}
 
 	runMigrations(cfg)
@@ -25,7 +27,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	if cfg.Storage.StoreInterval != 0 {
+	if cfg.Storage.StoreInterval.Value() != 0 {
 		wg.Add(1)
 	}
 

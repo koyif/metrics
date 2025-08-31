@@ -2,78 +2,46 @@ package config
 
 import (
 	"flag"
-	"github.com/koyif/metrics/pkg/logger"
-	"os"
-	"strconv"
-	"time"
+	"log"
+
+	"github.com/ilyakaznacheev/cleanenv"
+	"github.com/koyif/metrics/pkg/types"
 )
 
 const (
 	AddressEnvVarName        = "ADDRESS"
 	ReportIntervalEnvVarName = "REPORT_INTERVAL"
 	PollIntervalEnvVarName   = "POLL_INTERVAL"
+	HashKeyEnvVarName        = "KEY"
 )
 
 type ServerConfig struct {
-	Addr string `yaml:"addr"`
+	Addr string `yaml:"addr" env:"ADDRESS" env-default:"localhost:8080"`
 }
 
 type Config struct {
-	Server         ServerConfig  `yaml:"server"`
-	PollInterval   time.Duration `yaml:"pollInterval"`
-	ReportInterval time.Duration `yaml:"reportInterval"`
+	Server         ServerConfig            `yaml:"server"`
+	PollInterval   types.DurationInSeconds `yaml:"pollInterval" env:"POLL_INTERVAL" env-default:"2"`
+	ReportInterval types.DurationInSeconds `yaml:"reportInterval" env:"REPORT_INTERVAL" env-default:"10"`
+	HashKey        string                  `yaml:"hashKey" env:"KEY"`
 }
 
 func Load() *Config {
-	cfg := &Config{
-		Server: ServerConfig{
-			Addr: "localhost:8080",
-		},
-		PollInterval:   2 * time.Second,
-		ReportInterval: 10 * time.Second,
-	}
+	cfg := &Config{}
 
-	flag.Func("p", "частота опроса метрик из пакета runtime в секундах", secondsToDuration(&cfg.PollInterval))
-	flag.Func("r", "частота отправки метрик на сервер в секундах", secondsToDuration(&cfg.ReportInterval))
+	flag.Func("p", "частота опроса метрик из пакета runtime в секундах", func(s string) error { return cfg.PollInterval.SetValue(s) })
+	flag.Func("r", "частота отправки метрик на сервер в секундах", func(s string) error { return cfg.ReportInterval.SetValue(s) })
+	flag.StringVar(&cfg.HashKey, "k", "", "ключ для хеширования")
 	flag.StringVar(&cfg.Server.Addr, "a", "localhost:8080", "адрес эндпоинта HTTP-сервера")
 
 	flag.Parse()
 
-	loadEnv(cfg)
+	err := cleanenv.ReadEnv(cfg)
+	if err != nil {
+		log.Fatalf("couldn't read environment variables: %s", err.Error())
+	}
+
+	log.Printf("loaded config: %+v", cfg)
 
 	return cfg
-}
-
-func loadEnv(cfg *Config) {
-	addressEnv := os.Getenv(AddressEnvVarName)
-	if addressEnv != "" {
-		cfg.Server.Addr = addressEnv
-	}
-	reportIntervalEnv := os.Getenv(ReportIntervalEnvVarName)
-	if reportIntervalEnv != "" {
-		err := secondsToDuration(&cfg.ReportInterval)(reportIntervalEnv)
-		if err != nil {
-			logger.Log.Error("couldn't get environment variable", logger.Error(err))
-		}
-	}
-	pollIntervalEnv := os.Getenv(PollIntervalEnvVarName)
-	if pollIntervalEnv != "" {
-		err := secondsToDuration(&cfg.PollInterval)(pollIntervalEnv)
-		if err != nil {
-			logger.Log.Error("couldn't get environment variable", logger.Error(err))
-		}
-	}
-}
-
-func secondsToDuration(interval *time.Duration) func(string) error {
-	return func(s string) error {
-		sec, err := strconv.Atoi(s)
-		if err != nil {
-			return err
-		}
-
-		*interval = time.Duration(sec) * time.Second
-
-		return nil
-	}
 }

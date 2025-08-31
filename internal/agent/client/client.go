@@ -2,21 +2,25 @@ package client
 
 import (
 	"bytes"
+	"crypto/hmac"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"github.com/koyif/metrics/internal/agent/config"
-	"github.com/koyif/metrics/internal/models"
-	"github.com/koyif/metrics/pkg/errutil"
-	"github.com/koyif/metrics/pkg/logger"
 	"io"
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/koyif/metrics/internal/agent/config"
+	"github.com/koyif/metrics/internal/models"
+	"github.com/koyif/metrics/pkg/errutil"
+	"github.com/koyif/metrics/pkg/logger"
 )
 
 type MetricsClient struct {
 	httpClient *http.Client
 	baseURL    *url.URL
+	cfg        *config.Config
 }
 
 const errClosingResponseBody = "error closing response body"
@@ -30,6 +34,7 @@ func New(cfg *config.Config, c *http.Client) (*MetricsClient, error) {
 	return &MetricsClient{
 		httpClient: c,
 		baseURL:    baseURL,
+		cfg:        cfg,
 	}, nil
 }
 
@@ -89,12 +94,19 @@ func (c *MetricsClient) retry(updatesURL *url.URL, requestBody []byte) error {
 	var response *http.Response
 	var classifier = NewHTTPErrorClassifier()
 
-	for i := 0; i < maxAttempts; i++ {
-		response, lastErr = c.httpClient.Post(
-			updatesURL.String(),
-			"application/json",
-			bytes.NewReader(requestBody),
-		)
+	req, err := http.NewRequest(http.MethodPost, updatesURL.String(), bytes.NewReader(requestBody))
+	if err != nil {
+		return err
+	}
+
+	if c.cfg.HashKey != "" {
+		h := hmac.New(sha256.New, []byte(c.cfg.HashKey))
+		h.Write(requestBody)
+		req.Header.Set("HashSHA256", fmt.Sprintf("%x", h.Sum(nil)))
+	}
+
+	for i := range maxAttempts {
+		response, lastErr = c.httpClient.Do(req)
 		if lastErr == nil {
 			if response.StatusCode >= 500 {
 				logger.Log.Warn("failed to execute query, retrying")
