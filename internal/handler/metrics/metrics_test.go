@@ -132,8 +132,8 @@ func TestGetHandler_Handle(t *testing.T) {
 	)
 
 	var (
-		counterValue int64   = 42
-		gaugeValue   float64 = 3.14
+		counterValue int64 = 42
+		gaugeValue         = 3.14
 	)
 
 	type mockGetterFunc func(string) (interface{}, error)
