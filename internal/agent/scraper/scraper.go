@@ -1,73 +1,93 @@
 package scraper
 
 import (
-	"runtime"
-	
+	"context"
+	"github.com/koyif/metrics/internal/agent/config"
 	"github.com/koyif/metrics/internal/models"
+	"runtime"
+	"time"
 )
 
-type storage interface {
-	Clean()
-	Store(metricName string, value float64)
-	Metrics() []models.Metrics
-}
-
 type Scraper struct {
-	count   int64
-	storage storage
+	count int64
+	cfg   *config.Config
 }
 
-func New(storage storage) *Scraper {
+func New(cfg *config.Config) *Scraper {
 	return &Scraper{
-		count:   0,
-		storage: storage,
+		count: 0,
+		cfg:   cfg,
 	}
 }
 
-func (s *Scraper) Metrics() []models.Metrics {
-	return s.storage.Metrics()
-}
-
-func (s *Scraper) Count() int64 {
-	return s.count
-}
-
-func (s *Scraper) Reset() {
-	s.storage.Clean()
-	s.count = 0
-}
-
-func (s *Scraper) Scrap() {
+func (s *Scraper) Scrap() []models.Metrics {
 	memStats := runtime.MemStats{}
 	runtime.ReadMemStats(&memStats)
 
-	s.storage.Store("Alloc", float64(memStats.Alloc))
-	s.storage.Store("BuckHashSys", float64(memStats.BuckHashSys))
-	s.storage.Store("Frees", float64(memStats.Frees))
-	s.storage.Store("GCCPUFraction", memStats.GCCPUFraction)
-	s.storage.Store("GCSys", float64(memStats.GCSys))
-	s.storage.Store("HeapAlloc", float64(memStats.HeapAlloc))
-	s.storage.Store("HeapIdle", float64(memStats.HeapIdle))
-	s.storage.Store("HeapInuse", float64(memStats.HeapInuse))
-	s.storage.Store("HeapObjects", float64(memStats.HeapObjects))
-	s.storage.Store("HeapReleased", float64(memStats.HeapReleased))
-	s.storage.Store("HeapSys", float64(memStats.HeapSys))
-	s.storage.Store("LastGC", float64(memStats.LastGC))
-	s.storage.Store("Lookups", float64(memStats.Lookups))
-	s.storage.Store("MCacheInuse", float64(memStats.MCacheInuse))
-	s.storage.Store("MCacheSys", float64(memStats.MCacheSys))
-	s.storage.Store("MSpanInuse", float64(memStats.MSpanInuse))
-	s.storage.Store("MSpanSys", float64(memStats.MSpanSys))
-	s.storage.Store("Mallocs", float64(memStats.Mallocs))
-	s.storage.Store("NextGC", float64(memStats.NextGC))
-	s.storage.Store("NumForcedGC", float64(memStats.NumForcedGC))
-	s.storage.Store("NumGC", float64(memStats.NumGC))
-	s.storage.Store("OtherSys", float64(memStats.OtherSys))
-	s.storage.Store("PauseTotalNs", float64(memStats.PauseTotalNs))
-	s.storage.Store("StackInuse", float64(memStats.StackInuse))
-	s.storage.Store("StackSys", float64(memStats.StackSys))
-	s.storage.Store("Sys", float64(memStats.Sys))
-	s.storage.Store("TotalAlloc", float64(memStats.TotalAlloc))
-
 	s.count++
+	metrics := make([]models.Metrics, 0, 30)
+
+	metrics = append(metrics, newGauge("Alloc", float64(memStats.Alloc)))
+	metrics = append(metrics, newGauge("BuckHashSys", float64(memStats.BuckHashSys)))
+	metrics = append(metrics, newGauge("Frees", float64(memStats.Frees)))
+	metrics = append(metrics, newGauge("GCCPUFraction", memStats.GCCPUFraction))
+	metrics = append(metrics, newGauge("GCSys", float64(memStats.GCSys)))
+	metrics = append(metrics, newGauge("HeapAlloc", float64(memStats.HeapAlloc)))
+	metrics = append(metrics, newGauge("HeapIdle", float64(memStats.HeapIdle)))
+	metrics = append(metrics, newGauge("HeapInuse", float64(memStats.HeapInuse)))
+	metrics = append(metrics, newGauge("HeapObjects", float64(memStats.HeapObjects)))
+	metrics = append(metrics, newGauge("HeapReleased", float64(memStats.HeapReleased)))
+	metrics = append(metrics, newGauge("HeapSys", float64(memStats.HeapSys)))
+	metrics = append(metrics, newGauge("LastGC", float64(memStats.LastGC)))
+	metrics = append(metrics, newGauge("Lookups", float64(memStats.Lookups)))
+	metrics = append(metrics, newGauge("MCacheInuse", float64(memStats.MCacheInuse)))
+	metrics = append(metrics, newGauge("MCacheSys", float64(memStats.MCacheSys)))
+	metrics = append(metrics, newGauge("MSpanInuse", float64(memStats.MSpanInuse)))
+	metrics = append(metrics, newGauge("MSpanSys", float64(memStats.MSpanSys)))
+	metrics = append(metrics, newGauge("Mallocs", float64(memStats.Mallocs)))
+	metrics = append(metrics, newGauge("NextGC", float64(memStats.NextGC)))
+	metrics = append(metrics, newGauge("NumForcedGC", float64(memStats.NumForcedGC)))
+	metrics = append(metrics, newGauge("NumGC", float64(memStats.NumGC)))
+	metrics = append(metrics, newGauge("OtherSys", float64(memStats.OtherSys)))
+	metrics = append(metrics, newGauge("PauseTotalNs", float64(memStats.PauseTotalNs)))
+	metrics = append(metrics, newGauge("StackInuse", float64(memStats.StackInuse)))
+	metrics = append(metrics, newGauge("StackSys", float64(memStats.StackSys)))
+	metrics = append(metrics, newGauge("Sys", float64(memStats.Sys)))
+	metrics = append(metrics, newGauge("TotalAlloc", float64(memStats.TotalAlloc)))
+	metrics = append(metrics, models.Metrics{
+		ID:    "PollCount",
+		MType: models.Counter,
+		Delta: &s.count,
+	})
+
+	return metrics
+}
+
+func newGauge(ID string, value float64) models.Metrics {
+	return models.Metrics{
+		ID:    ID,
+		MType: models.Gauge,
+		Value: &value,
+	}
+}
+
+func (s *Scraper) Start(ctx context.Context) <-chan []models.Metrics {
+	metricsCh := make(chan []models.Metrics, 256)
+
+	go func() {
+		ticker := time.NewTicker(s.cfg.PollInterval.Value())
+
+		for {
+			select {
+			case <-ctx.Done():
+				ticker.Stop()
+				close(metricsCh)
+				return
+			case <-ticker.C:
+				metricsCh <- s.Scrap()
+			}
+		}
+	}()
+
+	return metricsCh
 }

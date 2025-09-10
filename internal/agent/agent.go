@@ -5,18 +5,10 @@ import (
 	"math/rand/v2"
 	"time"
 
-	"github.com/koyif/metrics/pkg/logger"
-
 	"github.com/koyif/metrics/internal/agent/config"
 	"github.com/koyif/metrics/internal/models"
+	"github.com/koyif/metrics/pkg/logger"
 )
-
-type scraper interface {
-	Scrap()
-	Count() int64
-	Metrics() []models.Metrics
-	Reset()
-}
 
 type metricsClient interface {
 	SendMetric(metric models.Metrics) error
@@ -25,59 +17,40 @@ type metricsClient interface {
 
 type Agent struct {
 	cfg           *config.Config
-	scraper       scraper
 	metricsClient metricsClient
 }
 
-func New(cfg *config.Config, scraper scraper, cl metricsClient) *Agent {
+func New(cfg *config.Config, cl metricsClient) *Agent {
 	return &Agent{
 		cfg:           cfg,
-		scraper:       scraper,
 		metricsClient: cl,
 	}
 }
 
-func (a *Agent) Start(ctx context.Context) {
+func (a *Agent) Start(ctx context.Context, ch <-chan []models.Metrics) {
 	go func() {
-		pollTicker := time.NewTicker(a.cfg.PollInterval.Value())
 		reportTicker := time.NewTicker(a.cfg.ReportInterval.Value())
 
 		for {
 			select {
 			case <-ctx.Done():
-				pollTicker.Stop()
 				reportTicker.Stop()
-
 				return
-			case <-pollTicker.C:
-				a.pollMetrics()
 			case <-reportTicker.C:
-				a.reportMetrics()
+				a.reportMetrics(<-ch)
 			}
 		}
 	}()
 }
 
-func (a *Agent) pollMetrics() {
-	a.scraper.Scrap()
-}
-
-func (a *Agent) reportMetrics() {
-	metrics := a.scraper.Metrics()
+func (a *Agent) reportMetrics(metrics []models.Metrics) {
 	r := rand.Float64()
-	c := a.scraper.Count()
 
-	metrics = append(metrics, []models.Metrics{
-		{
-			ID:    "RandomValue",
-			MType: models.Gauge,
-			Value: &r,
-		},
-		{
-			ID:    "PollCount",
-			MType: models.Counter,
-			Delta: &c,
-		}}...,
+	metrics = append(metrics, models.Metrics{
+		ID:    "RandomValue",
+		MType: models.Gauge,
+		Value: &r,
+	},
 	)
 
 	err := a.metricsClient.SendMetrics(metrics)
@@ -87,7 +60,4 @@ func (a *Agent) reportMetrics() {
 	}
 
 	logger.Log.Info("sent metrics", logger.Int("count", len(metrics)))
-
-	a.scraper.Reset()
-
 }
