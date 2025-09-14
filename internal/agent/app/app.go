@@ -2,11 +2,7 @@ package app
 
 import (
 	"context"
-	"github.com/koyif/metrics/pkg/logger"
 	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/koyif/metrics/internal/agent"
 	"github.com/koyif/metrics/internal/agent/client"
@@ -24,11 +20,9 @@ func New(cfg *config.Config) *App {
 	}
 }
 
-func (app *App) Run() error {
-	ctx, cancel := context.WithCancel(context.Background())
+func (app *App) Run(ctx context.Context) error {
 	sc := scraper.New(app.cfg)
 	metricsCh := sc.Start(ctx)
-	defer cancel()
 
 	cl, err := client.New(app.cfg, &http.Client{})
 	if err != nil {
@@ -36,14 +30,7 @@ func (app *App) Run() error {
 	}
 
 	a := agent.New(app.cfg, cl)
-
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, syscall.SIGTERM, syscall.SIGINT)
-
 	a.Start(ctx, metricsCh)
-
-	<-stop
-	logger.Log.Info("shutting down")
 
 	return nil
 }

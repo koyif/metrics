@@ -2,6 +2,7 @@ package config
 
 import (
 	"flag"
+	"fmt"
 	"log"
 
 	"github.com/ilyakaznacheev/cleanenv"
@@ -20,7 +21,7 @@ type Config struct {
 	RateLimit      int                     `yaml:"rateLimit" env:"RATE_LIMIT" env-default:"3"`
 }
 
-func Load() *Config {
+func Load() (*Config, error) {
 	cfg := &Config{}
 
 	flag.Func("p", "частота опроса метрик из пакета runtime в секундах", func(s string) error { return cfg.PollInterval.SetValue(s) })
@@ -33,10 +34,10 @@ func Load() *Config {
 
 	err := cleanenv.ReadEnv(cfg)
 	if err != nil {
-		log.Fatalf("couldn't read environment variables: %s", err.Error())
+		return nil, fmt.Errorf("couldn't read environment variables: %w", err)
 	}
 
 	log.Printf("loaded config: %+v", cfg)
 
-	return cfg
+	return cfg, nil
 }

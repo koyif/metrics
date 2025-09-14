@@ -96,12 +96,16 @@ func (c *MetricsClient) retry(updatesURL *url.URL, requestBody []byte) error {
 
 	req, err := http.NewRequest(http.MethodPost, updatesURL.String(), bytes.NewReader(requestBody))
 	if err != nil {
-		return err
+		return fmt.Errorf("error creating request: %w", err)
 	}
 
 	if c.cfg.HashKey != "" {
 		h := hmac.New(sha256.New, []byte(c.cfg.HashKey))
-		h.Write(requestBody)
+		_, err = h.Write(requestBody)
+		if err != nil {
+			return fmt.Errorf("error creating HMAC: %w", err)
+		}
+
 		req.Header.Set("HashSHA256", fmt.Sprintf("%x", h.Sum(nil)))
 	}
 
@@ -122,7 +126,7 @@ func (c *MetricsClient) retry(updatesURL *url.URL, requestBody []byte) error {
 			return nil
 		} else {
 			if classifier.Classify(lastErr) == errutil.NonRetriable {
-				return lastErr
+				return fmt.Errorf("failed to execute query: %w", lastErr)
 			}
 
 			logger.Log.Warn("failed to execute query, retrying")
