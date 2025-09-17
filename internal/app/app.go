@@ -3,9 +3,10 @@ package app
 import (
 	"context"
 	"errors"
-	"github.com/koyif/metrics/pkg/logger"
 	"io"
 	"sync"
+
+	"github.com/koyif/metrics/pkg/logger"
 
 	"github.com/koyif/metrics/internal/config"
 	"github.com/koyif/metrics/internal/models"
@@ -48,7 +49,7 @@ func New(ctx context.Context, wg *sync.WaitGroup, cfg *config.Config) *App {
 			}
 		}
 
-		fileService.SchedulePersist(ctx, wg, cfg.Storage.StoreInterval)
+		fileService.SchedulePersist(ctx, wg, cfg.Storage.StoreInterval.Value())
 	}
 
 	metricsService := service.NewMetricsService(metricsRepository, fileService)

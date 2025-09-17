@@ -2,11 +2,11 @@ package deprecated
 
 import (
 	"errors"
-	"fmt"
-	"github.com/koyif/metrics/internal/handler"
-	"github.com/koyif/metrics/internal/repository/dberror"
 	"net/http"
 	"strconv"
+
+	"github.com/koyif/metrics/internal/repository/dberror"
+	"github.com/koyif/metrics/pkg/logger"
 )
 
 type counterStorer interface {
@@ -41,18 +41,25 @@ func (ch CountersPostHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	mn := r.PathValue("metric")
 	value := r.PathValue("value")
 	if mn == "" || value == "" {
-		handler.NotFound(w, r, "")
+		logger.Log.Warn(metricIDEmptyErrorMessage, logger.String("URI", r.RequestURI))
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+
 		return
 	}
 
-	v, err := strconv.ParseInt(value, 10, 64)
-	if err != nil {
-		handler.BadRequest(w, r.RequestURI, fmt.Sprintf("incorrect value format: %s", value))
-		return
-	}
+	if v, err := strconv.ParseInt(value, 10, 64); err != nil {
+		logger.Log.Warn(incorrectValueFormatMessage, logger.String("URI", r.RequestURI))
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 
-	if err := ch.service.StoreCounter(mn, v); err != nil {
-		handler.InternalServerError(w, err, "failed to store metric")
+		return
+	} else if err := ch.service.StoreCounter(mn, v); err != nil {
+		logger.Log.Warn(failedToPersistMetricsErrorMessage, logger.Error(err))
+		http.Error(
+			w,
+			http.StatusText(http.StatusInternalServerError),
+			http.StatusInternalServerError,
+		)
+
 		return
 	}
 
@@ -62,13 +69,26 @@ func (ch CountersPostHandler) Handle(w http.ResponseWriter, r *http.Request) {
 func (h CountersGetHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	mn := r.PathValue("metric")
 	if mn == "" {
-		handler.NotFound(w, r, "")
+		logger.Log.Warn(metricIDEmptyErrorMessage, logger.String("URI", r.RequestURI))
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+
 		return
 	}
 
 	value, err := h.service.Counter(mn)
 	if err != nil && errors.Is(err, dberror.ErrValueNotFound) {
-		handler.NotFound(w, r, "value not found in storage")
+		logger.Log.Warn(valueNotFoundErrorMessage, logger.String("URI", r.RequestURI), logger.String("ID", mn))
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+
+		return
+	} else if err != nil {
+		logger.Log.Warn(failedToGetMetricValueErrorMessage, logger.Error(err))
+		http.Error(
+			w,
+			http.StatusText(http.StatusInternalServerError),
+			http.StatusInternalServerError,
+		)
+
 		return
 	}
 

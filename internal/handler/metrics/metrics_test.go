@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/koyif/metrics/internal/models"
 	"io"
 	"math"
 	"net/http"
@@ -15,8 +14,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/koyif/metrics/internal/models"
+	"github.com/koyif/metrics/internal/repository/dberror"
+
 	"github.com/koyif/metrics/internal/config"
 	"github.com/koyif/metrics/pkg/dto"
+	"github.com/koyif/metrics/pkg/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -122,6 +125,193 @@ func (m *MockMetricsRepository) Reset() {
 	m.shouldFailPersist = false
 }
 
+func TestGetHandler_Handle(t *testing.T) {
+	const (
+		counterName = "test_counter"
+		gaugeName   = "test_gauge"
+	)
+
+	var (
+		counterValue int64 = 42
+		gaugeValue         = 3.14
+	)
+
+	type mockGetterFunc func(string) (interface{}, error)
+	type given struct {
+		counterFunc mockGetterFunc
+		gaugeFunc   mockGetterFunc
+	}
+	type when struct {
+		request     dto.Metrics
+		requestBody string
+		useRawBody  bool
+	}
+	type want struct {
+		statusCode       int
+		responseMetrics  *dto.Metrics
+		responseContains string
+	}
+
+	tests := []struct {
+		name  string
+		given given
+		when  when
+		want  want
+	}{
+		{
+			name: "successfully get counter metric",
+			given: given{
+				counterFunc: func(name string) (interface{}, error) {
+					if name == counterName {
+						return counterValue, nil
+					}
+					return nil, dberror.ErrValueNotFound
+				},
+			},
+			when: when{
+				request: dto.Metrics{
+					ID:    counterName,
+					MType: dto.CounterMetricsType,
+				},
+			},
+			want: want{
+				statusCode: http.StatusOK,
+				responseMetrics: &dto.Metrics{
+					ID:    counterName,
+					MType: dto.CounterMetricsType,
+					Delta: &counterValue,
+				},
+			},
+		},
+		{
+			name: "successfully get gauge metric",
+			given: given{
+				gaugeFunc: func(name string) (interface{}, error) {
+					if name == gaugeName {
+						return gaugeValue, nil
+					}
+					return nil, dberror.ErrValueNotFound
+				},
+			},
+			when: when{
+				request: dto.Metrics{
+					ID:    gaugeName,
+					MType: dto.GaugeMetricsType,
+				},
+			},
+			want: want{
+				statusCode: http.StatusOK,
+				responseMetrics: &dto.Metrics{
+					ID:    gaugeName,
+					MType: dto.GaugeMetricsType,
+					Value: &gaugeValue,
+				},
+			},
+		},
+		{
+			name: "metric not found",
+			given: given{
+				counterFunc: func(string) (interface{}, error) {
+					return nil, dberror.ErrValueNotFound
+				},
+			},
+			when: when{
+				request: dto.Metrics{
+					ID:    "nonexistent",
+					MType: dto.CounterMetricsType,
+				},
+			},
+			want: want{
+				statusCode:       http.StatusNotFound,
+				responseContains: http.StatusText(http.StatusNotFound),
+			},
+		},
+		{
+			name: "malformed JSON request",
+			when: when{
+				requestBody: `{"invalid": json`,
+				useRawBody:  true,
+			},
+			want: want{
+				statusCode:       http.StatusBadRequest,
+				responseContains: http.StatusText(http.StatusBadRequest),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockGetter := &mockMetricsGetter{
+				counterFunc: tt.given.counterFunc,
+				gaugeFunc:   tt.given.gaugeFunc,
+			}
+
+			handler := NewGetHandler(mockGetter)
+
+			server := httptest.NewServer(http.HandlerFunc(handler.Handle))
+			defer server.Close()
+
+			var body io.Reader
+			if tt.when.useRawBody {
+				body = strings.NewReader(tt.when.requestBody)
+			} else {
+				jsonBody, err := json.Marshal(tt.when.request)
+				require.NoError(t, err)
+				body = bytes.NewReader(jsonBody)
+			}
+
+			req, err := http.NewRequest(http.MethodPost, server.URL, body)
+			require.NoError(t, err)
+
+			resp, err := http.DefaultClient.Do(req)
+			require.NoError(t, err)
+			defer resp.Body.Close()
+
+			assert.Equal(t, tt.want.statusCode, resp.StatusCode)
+
+			if tt.want.responseMetrics != nil {
+				var response dto.Metrics
+				err = json.NewDecoder(resp.Body).Decode(&response)
+				require.NoError(t, err)
+				assert.Equal(t, *tt.want.responseMetrics, response)
+			}
+
+			if tt.want.responseContains != "" {
+				body, err := io.ReadAll(resp.Body)
+				require.NoError(t, err)
+				assert.Contains(t, string(body), tt.want.responseContains)
+			}
+		})
+	}
+}
+
+type mockMetricsGetter struct {
+	counterFunc func(string) (interface{}, error)
+	gaugeFunc   func(string) (interface{}, error)
+}
+
+func (m *mockMetricsGetter) Counter(name string) (int64, error) {
+	if m.counterFunc == nil {
+		return 0, dberror.ErrValueNotFound
+	}
+	val, err := m.counterFunc(name)
+	if err != nil {
+		return 0, err
+	}
+	return val.(int64), nil
+}
+
+func (m *mockMetricsGetter) Gauge(name string) (float64, error) {
+	if m.gaugeFunc == nil {
+		return 0, dberror.ErrValueNotFound
+	}
+	val, err := m.gaugeFunc(name)
+	if err != nil {
+		return 0, err
+	}
+	return val.(float64), nil
+}
+
 func TestStoreHandler_Handle(t *testing.T) {
 	var (
 		delta      int64 = 100
@@ -160,7 +350,7 @@ func TestStoreHandler_Handle(t *testing.T) {
 			name: "malformed JSON request",
 			given: given{
 				config: &config.Config{
-					Storage: config.StorageConfig{StoreInterval: 300 * time.Second},
+					Storage: config.StorageConfig{StoreInterval: types.DurationInSeconds(300 * time.Second)},
 				},
 			},
 			when: when{
@@ -177,7 +367,7 @@ func TestStoreHandler_Handle(t *testing.T) {
 			name: "empty metrics name",
 			given: given{
 				config: &config.Config{
-					Storage: config.StorageConfig{StoreInterval: 300 * time.Second},
+					Storage: config.StorageConfig{StoreInterval: types.DurationInSeconds(300 * time.Second)},
 				},
 			},
 			when: when{
@@ -196,7 +386,7 @@ func TestStoreHandler_Handle(t *testing.T) {
 			name: "unknown metrics type",
 			given: given{
 				config: &config.Config{
-					Storage: config.StorageConfig{StoreInterval: 300 * time.Second},
+					Storage: config.StorageConfig{StoreInterval: types.DurationInSeconds(300 * time.Second)},
 				},
 			},
 			when: when{
@@ -215,7 +405,7 @@ func TestStoreHandler_Handle(t *testing.T) {
 			name: "empty delta in counter metrics type",
 			given: given{
 				config: &config.Config{
-					Storage: config.StorageConfig{StoreInterval: 300 * time.Second},
+					Storage: config.StorageConfig{StoreInterval: types.DurationInSeconds(300 * time.Second)},
 				},
 			},
 			when: when{
@@ -234,7 +424,7 @@ func TestStoreHandler_Handle(t *testing.T) {
 			name: "empty value in gauge metrics type",
 			given: given{
 				config: &config.Config{
-					Storage: config.StorageConfig{StoreInterval: 300 * time.Second},
+					Storage: config.StorageConfig{StoreInterval: types.DurationInSeconds(300 * time.Second)},
 				},
 			},
 			when: when{
@@ -253,7 +443,7 @@ func TestStoreHandler_Handle(t *testing.T) {
 			name: "counter storing error",
 			given: given{
 				config: &config.Config{
-					Storage: config.StorageConfig{StoreInterval: 300 * time.Second},
+					Storage: config.StorageConfig{StoreInterval: types.DurationInSeconds(300 * time.Second)},
 				},
 			},
 			when: when{
@@ -273,7 +463,7 @@ func TestStoreHandler_Handle(t *testing.T) {
 			name: "gauge storing error",
 			given: given{
 				config: &config.Config{
-					Storage: config.StorageConfig{StoreInterval: 300 * time.Second},
+					Storage: config.StorageConfig{StoreInterval: types.DurationInSeconds(300 * time.Second)},
 				},
 			},
 			when: when{
@@ -293,7 +483,7 @@ func TestStoreHandler_Handle(t *testing.T) {
 			name: "counter successfully stored",
 			given: given{
 				config: &config.Config{
-					Storage: config.StorageConfig{StoreInterval: 300 * time.Second},
+					Storage: config.StorageConfig{StoreInterval: types.DurationInSeconds(300 * time.Second)},
 				},
 			},
 			when: when{
@@ -317,7 +507,7 @@ func TestStoreHandler_Handle(t *testing.T) {
 			name: "gauge successfully stored",
 			given: given{
 				config: &config.Config{
-					Storage: config.StorageConfig{StoreInterval: 300 * time.Second},
+					Storage: config.StorageConfig{StoreInterval: types.DurationInSeconds(300 * time.Second)},
 				},
 			},
 			when: when{
@@ -341,7 +531,7 @@ func TestStoreHandler_Handle(t *testing.T) {
 			name: "counter with zero value",
 			given: given{
 				config: &config.Config{
-					Storage: config.StorageConfig{StoreInterval: 300 * time.Second},
+					Storage: config.StorageConfig{StoreInterval: types.DurationInSeconds(300 * time.Second)},
 				},
 			},
 			when: when{
@@ -365,7 +555,7 @@ func TestStoreHandler_Handle(t *testing.T) {
 			name: "gauge with zero value",
 			given: given{
 				config: &config.Config{
-					Storage: config.StorageConfig{StoreInterval: 300 * time.Second},
+					Storage: config.StorageConfig{StoreInterval: types.DurationInSeconds(300 * time.Second)},
 				},
 			},
 			when: when{
@@ -389,7 +579,7 @@ func TestStoreHandler_Handle(t *testing.T) {
 			name: "counter with negative value",
 			given: given{
 				config: &config.Config{
-					Storage: config.StorageConfig{StoreInterval: 300 * time.Second},
+					Storage: config.StorageConfig{StoreInterval: types.DurationInSeconds(300 * time.Second)},
 				},
 			},
 			when: when{
@@ -413,7 +603,7 @@ func TestStoreHandler_Handle(t *testing.T) {
 			name: "gauge with negative value",
 			given: given{
 				config: &config.Config{
-					Storage: config.StorageConfig{StoreInterval: 300 * time.Second},
+					Storage: config.StorageConfig{StoreInterval: types.DurationInSeconds(300 * time.Second)},
 				},
 			},
 			when: when{
@@ -437,7 +627,7 @@ func TestStoreHandler_Handle(t *testing.T) {
 			name: "counter with max value",
 			given: given{
 				config: &config.Config{
-					Storage: config.StorageConfig{StoreInterval: 300 * time.Second},
+					Storage: config.StorageConfig{StoreInterval: types.DurationInSeconds(300 * time.Second)},
 				},
 			},
 			when: when{
@@ -461,7 +651,7 @@ func TestStoreHandler_Handle(t *testing.T) {
 			name: "gauge with max value",
 			given: given{
 				config: &config.Config{
-					Storage: config.StorageConfig{StoreInterval: 300 * time.Second},
+					Storage: config.StorageConfig{StoreInterval: types.DurationInSeconds(300 * time.Second)},
 				},
 			},
 			when: when{
@@ -568,7 +758,7 @@ func TestStoreHandler_PersistBehavior(t *testing.T) {
 			mock := NewMockMetricsRepository()
 
 			cfg := &config.Config{
-				Storage: config.StorageConfig{StoreInterval: tt.storeInterval},
+				Storage: config.StorageConfig{StoreInterval: types.DurationInSeconds(tt.storeInterval)},
 			}
 
 			handler := NewStoreHandler(mock, cfg)

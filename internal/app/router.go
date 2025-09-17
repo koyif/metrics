@@ -12,8 +12,13 @@ import (
 
 func (app App) Router() *chi.Mux {
 	r := chi.NewRouter()
+
 	r.Use(middleware.WithLogger)
 	r.Use(middleware.WithGzip)
+
+	if app.Config.HashKey != "" {
+		r.Use(middleware.WithHashCheck(app.Config.HashKey))
+	}
 
 	summaryHandler := metrics.NewSummaryHandler(app.MetricsService)
 	getHandler := metrics.NewGetHandler(app.MetricsService)
