@@ -40,22 +40,30 @@ type metricsGetter interface {
 	Gauge(metricName string) (float64, error)
 }
 
+// StoreHandler handles HTTP requests for storing a single metric.
+// It processes POST requests at /update/ with JSON body containing metric data.
 type StoreHandler struct {
 	service      metricsStorer
 	cfg          *config.Config
 	auditManager *audit.Manager
 }
 
+// StoreAllHandler handles HTTP requests for batch storing multiple metrics.
+// It processes POST requests at /updates/ with JSON array of metrics.
 type StoreAllHandler struct {
 	service      metricsStorer
 	cfg          *config.Config
 	auditManager *audit.Manager
 }
 
+// GetHandler handles HTTP requests for retrieving metric values.
+// It processes POST requests at /value/ with JSON body specifying the metric to retrieve.
 type GetHandler struct {
 	service metricsGetter
 }
 
+// NewStoreHandler creates a new handler for single metric storage.
+// The auditManager can be nil if auditing is not enabled.
 func NewStoreHandler(service metricsStorer, cfg *config.Config, auditManager *audit.Manager) *StoreHandler {
 	return &StoreHandler{
 		service:      service,
@@ -64,6 +72,8 @@ func NewStoreHandler(service metricsStorer, cfg *config.Config, auditManager *au
 	}
 }
 
+// NewStoreAllHandler creates a new handler for batch metric storage.
+// The auditManager can be nil if auditing is not enabled.
 func NewStoreAllHandler(service metricsStorer, cfg *config.Config, auditManager *audit.Manager) *StoreAllHandler {
 	return &StoreAllHandler{
 		service:      service,
@@ -72,12 +82,25 @@ func NewStoreAllHandler(service metricsStorer, cfg *config.Config, auditManager 
 	}
 }
 
+// NewGetHandler creates a new handler for metric retrieval.
 func NewGetHandler(service metricsGetter) *GetHandler {
 	return &GetHandler{
 		service: service,
 	}
 }
 
+// Handle processes a single metric storage request.
+// Expected JSON format: {"id": "metric_name", "type": "counter|gauge", "delta": 123, "value": 45.67}
+//
+// The handler validates the metric type and ID, stores the metric,
+// and optionally triggers immediate persistence if StoreInterval is 0.
+// Audit events are generated for successful storage operations.
+//
+// Returns:
+//   - 200 OK: Metric stored successfully
+//   - 400 Bad Request: Invalid JSON format, unknown metric type, or nil value
+//   - 404 Not Found: Empty metric ID
+//   - 500 Internal Server Error: Storage or persistence failure
 func (sh StoreHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	var m dto.Metrics
 
@@ -121,6 +144,17 @@ func (sh StoreHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+// Handle processes a batch metric storage request.
+// Expected JSON format: [{"id": "metric1", "type": "counter", "delta": 1}, {"id": "metric2", "type": "gauge", "value": 2.5}]
+//
+// The handler validates all metrics, stores them in a single batch operation,
+// and generates audit events for the batch.
+//
+// Returns:
+//   - 200 OK: All metrics stored successfully
+//   - 400 Bad Request: Invalid JSON format
+//   - 404 Not Found: Empty metric ID or empty metrics array
+//   - 500 Internal Server Error: Storage failure
 func (sh StoreAllHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	var m []dto.Metrics
 
@@ -176,6 +210,17 @@ func (sh StoreAllHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+// Handle processes a metric retrieval request.
+// Expected JSON format: {"id": "metric_name", "type": "counter|gauge"}
+//
+// The handler retrieves the metric value and returns it in the response
+// with the same JSON structure, populating either delta (for counters) or value (for gauges).
+//
+// Returns:
+//   - 200 OK: Metric found and returned in JSON response body
+//   - 400 Bad Request: Invalid JSON format or unknown metric type
+//   - 404 Not Found: Empty metric ID or metric not found in storage
+//   - 500 Internal Server Error: Retrieval failure or JSON encoding error
 func (gh GetHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	var m dto.Metrics
 
