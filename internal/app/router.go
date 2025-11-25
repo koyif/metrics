@@ -1,23 +1,26 @@
 package app
 
 import (
+	_ "net/http/pprof"
+
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/koyif/metrics/internal/handler/health"
 
 	"github.com/koyif/metrics/internal/handler"
 	"github.com/koyif/metrics/internal/handler/deprecated"
 	"github.com/koyif/metrics/internal/handler/metrics"
-	"github.com/koyif/metrics/internal/handler/middleware"
+	custommiddleware "github.com/koyif/metrics/internal/handler/middleware"
 )
 
 func (app App) Router() *chi.Mux {
 	r := chi.NewRouter()
 
-	r.Use(middleware.WithLogger)
-	r.Use(middleware.WithGzip)
+	r.Use(custommiddleware.WithLogger)
+	r.Use(custommiddleware.WithGzip)
 
 	if app.Config.HashKey != "" {
-		r.Use(middleware.WithHashCheck(app.Config.HashKey))
+		r.Use(custommiddleware.WithHashCheck(app.Config.HashKey))
 	}
 
 	summaryHandler := metrics.NewSummaryHandler(app.MetricsService)
@@ -66,6 +69,8 @@ func (app App) Router() *chi.Mux {
 	})
 
 	r.NotFound(handler.UnknownMetricTypeHandler)
+
+	r.Mount("/debug", middleware.Profiler())
 
 	return r
 }

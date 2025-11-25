@@ -5,14 +5,14 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	_ "net/http/pprof"
 	"os/signal"
 	"sync"
 	"syscall"
 
-	"github.com/koyif/metrics/pkg/logger"
-
 	"github.com/koyif/metrics/internal/app"
 	"github.com/koyif/metrics/internal/config"
+	"github.com/koyif/metrics/pkg/logger"
 )
 
 func main() {

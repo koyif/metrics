@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/koyif/metrics/pkg/logger"
 )
@@ -14,6 +15,11 @@ import (
 func WithHashCheck(hashKey string) func(http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.Contains(r.RequestURI, "/debug/pprof") {
+				h.ServeHTTP(w, r)
+				return
+			}
+
 			headerHash := r.Header.Get("HashSHA256")
 			if headerHash == "" {
 				logger.Log.Warn("hash is not provided", logger.String("URI", r.RequestURI))
