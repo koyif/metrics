@@ -261,6 +261,8 @@ func Example_counterAccumulation() {
 		log.Fatal(err)
 	}
 
+	defer resp.Body.Close()
+
 	// Retrieve accumulated value
 	getServer := httptest.NewServer(http.HandlerFunc(getHandler.Handle))
 	defer getServer.Close()
