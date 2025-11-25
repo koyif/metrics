@@ -242,7 +242,12 @@ func Example_counterAccumulation() {
 		Delta: func() *int64 { v := int64(10); return &v }(),
 	}
 	body1, _ := json.Marshal(metric1)
-	_, _ = http.Post(storeServer.URL, "application/json", bytes.NewReader(body1))
+	resp, err := http.Post(storeServer.URL, "application/json", bytes.NewReader(body1))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer resp.Body.Close()
 
 	// Send second update
 	metric2 := dto.Metrics{
@@ -251,7 +256,10 @@ func Example_counterAccumulation() {
 		Delta: func() *int64 { v := int64(25); return &v }(),
 	}
 	body2, _ := json.Marshal(metric2)
-	_, _ = http.Post(storeServer.URL, "application/json", bytes.NewReader(body2))
+	resp, err = http.Post(storeServer.URL, "application/json", bytes.NewReader(body2))
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	// Retrieve accumulated value
 	getServer := httptest.NewServer(http.HandlerFunc(getHandler.Handle))
@@ -262,7 +270,10 @@ func Example_counterAccumulation() {
 		MType: "counter",
 	}
 	getBody, _ := json.Marshal(getMetric)
-	resp, _ := http.Post(getServer.URL, "application/json", bytes.NewReader(getBody))
+	resp, err = http.Post(getServer.URL, "application/json", bytes.NewReader(getBody))
+	if err != nil {
+		log.Fatal(err)
+	}
 	defer resp.Body.Close()
 
 	var result dto.Metrics
