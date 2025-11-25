@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"io"
 	"net/http"
 	"time"
 
@@ -52,12 +51,7 @@ func (h *HTTPAuditor) Notify(event models.AuditEvent) error {
 		logger.Log.Error("failed to send audit event", logger.Error(err))
 		return err
 	}
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			logger.Log.Error("error closing audit response body", logger.Error(err))
-		}
-	}(resp.Body)
+	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
 		logger.Log.Warn("audit server returned error status", logger.Int("status", resp.StatusCode))
