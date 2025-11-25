@@ -22,8 +22,8 @@ func (app App) Router() *chi.Mux {
 
 	summaryHandler := metrics.NewSummaryHandler(app.MetricsService)
 	getHandler := metrics.NewGetHandler(app.MetricsService)
-	storeHandler := metrics.NewStoreHandler(app.MetricsService, app.Config)
-	storeAllHandler := metrics.NewStoreAllHandler(app.MetricsService, app.Config)
+	storeHandler := metrics.NewStoreHandler(app.MetricsService, app.Config, app.AuditManager)
+	storeAllHandler := metrics.NewStoreAllHandler(app.MetricsService, app.Config, app.AuditManager)
 
 	counterGetHandler := deprecated.NewCountersGetHandler(app.MetricsService)
 	gaugeGetHandler := deprecated.NewGaugesGetHandler(app.MetricsService)

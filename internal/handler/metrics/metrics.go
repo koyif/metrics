@@ -4,7 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
+	"time"
 
+	"github.com/koyif/metrics/internal/audit"
 	"github.com/koyif/metrics/internal/models"
 	"github.com/koyif/metrics/internal/repository/dberror"
 
@@ -38,30 +41,34 @@ type metricsGetter interface {
 }
 
 type StoreHandler struct {
-	service metricsStorer
-	cfg     *config.Config
+	service      metricsStorer
+	cfg          *config.Config
+	auditManager *audit.Manager
 }
 
 type StoreAllHandler struct {
-	service metricsStorer
-	cfg     *config.Config
+	service      metricsStorer
+	cfg          *config.Config
+	auditManager *audit.Manager
 }
 
 type GetHandler struct {
 	service metricsGetter
 }
 
-func NewStoreHandler(service metricsStorer, cfg *config.Config) *StoreHandler {
+func NewStoreHandler(service metricsStorer, cfg *config.Config, auditManager *audit.Manager) *StoreHandler {
 	return &StoreHandler{
-		service: service,
-		cfg:     cfg,
+		service:      service,
+		cfg:          cfg,
+		auditManager: auditManager,
 	}
 }
 
-func NewStoreAllHandler(service metricsStorer, cfg *config.Config) *StoreAllHandler {
+func NewStoreAllHandler(service metricsStorer, cfg *config.Config, auditManager *audit.Manager) *StoreAllHandler {
 	return &StoreAllHandler{
-		service: service,
-		cfg:     cfg,
+		service:      service,
+		cfg:          cfg,
+		auditManager: auditManager,
 	}
 }
 
@@ -108,6 +115,8 @@ func (sh StoreHandler) Handle(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+
+	sendAuditEvent(sh.auditManager, []string{m.ID}, getClientIP(r))
 
 	w.WriteHeader(http.StatusOK)
 }
@@ -157,6 +166,12 @@ func (sh StoreAllHandler) Handle(w http.ResponseWriter, r *http.Request) {
 
 		return
 	}
+
+	metricNames := make([]string, 0, len(metrics))
+	for _, metric := range metrics {
+		metricNames = append(metricNames, metric.ID)
+	}
+	sendAuditEvent(sh.auditManager, metricNames, getClientIP(r))
 
 	w.WriteHeader(http.StatusOK)
 }
@@ -261,4 +276,37 @@ func (sh StoreHandler) handleGauge(w http.ResponseWriter, r *http.Request, metri
 
 		return
 	}
+}
+
+func getClientIP(r *http.Request) string {
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		if idx := strings.Index(xff, ","); idx != -1 {
+			return strings.TrimSpace(xff[:idx])
+		}
+		return strings.TrimSpace(xff)
+	}
+
+	if xri := r.Header.Get("X-Real-IP"); xri != "" {
+		return strings.TrimSpace(xri)
+	}
+
+	if idx := strings.LastIndex(r.RemoteAddr, ":"); idx != -1 {
+		return r.RemoteAddr[:idx]
+	}
+
+	return r.RemoteAddr
+}
+
+func sendAuditEvent(auditManager *audit.Manager, metricNames []string, ipAddress string) {
+	if auditManager == nil || !auditManager.IsEnabled() {
+		return
+	}
+
+	event := models.AuditEvent{
+		Timestamp: time.Now().Unix(),
+		Metrics:   metricNames,
+		IPAddress: ipAddress,
+	}
+
+	auditManager.NotifyAll(event)
 }

@@ -84,7 +84,6 @@ func (m *MockMetricsRepository) StoreGauge(metricName string, value float64) err
 func (m *MockMetricsRepository) StoreAll(metrics []models.Metrics) error {
 	// Not used in current tests
 	return nil
-
 }
 
 func (m *MockMetricsRepository) Persist() error {
@@ -681,7 +680,7 @@ func TestStoreHandler_Handle(t *testing.T) {
 				tt.given.setupMock(mock)
 			}
 
-			handler := NewStoreHandler(mock, tt.given.config)
+			handler := NewStoreHandler(mock, tt.given.config, nil)
 
 			mux := http.NewServeMux()
 			mux.HandleFunc("/update", handler.Handle)
@@ -761,7 +760,7 @@ func TestStoreHandler_PersistBehavior(t *testing.T) {
 				Storage: config.StorageConfig{StoreInterval: types.DurationInSeconds(tt.storeInterval)},
 			}
 
-			handler := NewStoreHandler(mock, cfg)
+			handler := NewStoreHandler(mock, cfg, nil)
 
 			mux := http.NewServeMux()
 			mux.HandleFunc("/update", handler.Handle)

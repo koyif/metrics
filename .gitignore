@@ -25,3 +25,5 @@ vendor/
 .vscode
 /.cursorignore
 /metrics.code-workspace
+!README.md
+*.md
