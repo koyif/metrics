@@ -2,8 +2,9 @@ package errutil
 
 import (
 	"fmt"
-	"github.com/koyif/metrics/pkg/logger"
 	"time"
+
+	"github.com/koyif/metrics/pkg/logger"
 )
 
 type RetriableErrorClassification int

@@ -2,8 +2,9 @@ package health
 
 import (
 	"context"
-	"github.com/koyif/metrics/pkg/logger"
 	"net/http"
+
+	"github.com/koyif/metrics/pkg/logger"
 )
 
 type pingService interface {

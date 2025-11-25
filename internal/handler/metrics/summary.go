@@ -1,10 +1,11 @@
 package metrics
 
 import (
-	"github.com/koyif/metrics/internal/handler"
 	"html/template"
 	"net/http"
 	"strconv"
+
+	"github.com/koyif/metrics/internal/handler"
 )
 
 const summaryHTML = `<html>

@@ -17,11 +17,12 @@ import (
 	"github.com/koyif/metrics/internal/models"
 	"github.com/koyif/metrics/internal/repository/dberror"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/koyif/metrics/internal/config"
 	"github.com/koyif/metrics/pkg/dto"
 	"github.com/koyif/metrics/pkg/types"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 const failingMetricsName = "failingMetrics"

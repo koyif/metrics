@@ -1,8 +1,9 @@
 package handler
 
 import (
-	"github.com/koyif/metrics/pkg/logger"
 	"net/http"
+
+	"github.com/koyif/metrics/pkg/logger"
 )
 
 func UnknownMetricTypeHandler(w http.ResponseWriter, r *http.Request) {

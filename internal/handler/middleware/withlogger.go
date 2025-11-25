@@ -2,9 +2,10 @@ package middleware
 
 import (
 	"fmt"
-	"github.com/koyif/metrics/pkg/logger"
 	"net/http"
 	"time"
+
+	"github.com/koyif/metrics/pkg/logger"
 )
 
 type responseData struct {

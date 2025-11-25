@@ -2,10 +2,11 @@ package middleware
 
 import (
 	"compress/gzip"
-	"github.com/koyif/metrics/pkg/logger"
 	"io"
 	"net/http"
 	"strings"
+
+	"github.com/koyif/metrics/pkg/logger"
 )
 
 type gzipWriter struct {
