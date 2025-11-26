@@ -2,10 +2,11 @@ package scraper
 
 import (
 	"context"
-	"github.com/koyif/metrics/internal/agent/config"
-	"github.com/koyif/metrics/internal/models"
 	"runtime"
 	"time"
+
+	"github.com/koyif/metrics/internal/agent/config"
+	"github.com/koyif/metrics/internal/models"
 )
 
 type Scraper struct {

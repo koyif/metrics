@@ -2,8 +2,9 @@ package client
 
 import (
 	"errors"
-	"github.com/koyif/metrics/pkg/errutil"
 	"syscall"
+
+	"github.com/koyif/metrics/pkg/errutil"
 )
 
 type HTTPErrorClassifier struct{}

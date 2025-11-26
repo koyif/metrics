@@ -8,6 +8,7 @@ import (
 
 	"github.com/koyif/metrics/pkg/logger"
 
+	"github.com/koyif/metrics/internal/audit"
 	"github.com/koyif/metrics/internal/config"
 	"github.com/koyif/metrics/internal/models"
 	"github.com/koyif/metrics/internal/persistence/database"
@@ -29,6 +30,7 @@ type metricsRepository interface {
 type App struct {
 	Config         *config.Config
 	MetricsService *service.MetricsService
+	AuditManager   *audit.Manager
 }
 
 func New(ctx context.Context, wg *sync.WaitGroup, cfg *config.Config) *App {
@@ -54,8 +56,37 @@ func New(ctx context.Context, wg *sync.WaitGroup, cfg *config.Config) *App {
 
 	metricsService := service.NewMetricsService(metricsRepository, fileService)
 
+	auditManager := initializeAudit(cfg)
+
 	return &App{
 		Config:         cfg,
 		MetricsService: metricsService,
+		AuditManager:   auditManager,
 	}
+}
+
+func initializeAudit(cfg *config.Config) *audit.Manager {
+	manager := audit.NewManager()
+
+	if cfg.Audit.FilePath != "" {
+		fileAuditor, err := audit.NewFileAuditor(cfg.Audit.FilePath)
+		if err != nil {
+			logger.Log.Error("failed to create file auditor", logger.Error(err))
+		} else {
+			manager.AddObserver(fileAuditor)
+			logger.Log.Info("file audit enabled", logger.String("path", cfg.Audit.FilePath))
+		}
+	}
+
+	if cfg.Audit.URL != "" {
+		httpAuditor, err := audit.NewHTTPAuditor(cfg.Audit.URL)
+		if err != nil {
+			logger.Log.Error("failed to create HTTP auditor", logger.Error(err))
+		} else {
+			manager.AddObserver(httpAuditor)
+			logger.Log.Info("HTTP audit enabled", logger.String("url", cfg.Audit.URL))
+		}
+	}
+
+	return manager
 }

@@ -6,6 +6,7 @@ import (
 	"log"
 
 	"github.com/ilyakaznacheev/cleanenv"
+
 	"github.com/koyif/metrics/pkg/types"
 )
 

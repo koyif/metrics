@@ -2,11 +2,11 @@ package service
 
 import (
 	"context"
-	"github.com/koyif/metrics/pkg/logger"
 	"sync"
 	"time"
 
-	models "github.com/koyif/metrics/internal/models"
+	"github.com/koyif/metrics/internal/models"
+	"github.com/koyif/metrics/pkg/logger"
 )
 
 type metricsRepository interface {

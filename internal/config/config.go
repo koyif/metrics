@@ -5,11 +5,17 @@ import (
 	"log"
 
 	"github.com/ilyakaznacheev/cleanenv"
+
 	"github.com/koyif/metrics/pkg/types"
 )
 
 type ServerConfig struct {
 	Addr string `yaml:"address" env:"ADDRESS" env-default:"localhost:8080"`
+}
+
+type AuditConfig struct {
+	FilePath string `yaml:"audit_file" env:"AUDIT_FILE"`
+	URL      string `yaml:"audit_url" env:"AUDIT_URL"`
 }
 
 type StorageConfig struct {
@@ -22,6 +28,7 @@ type StorageConfig struct {
 type Config struct {
 	Server  ServerConfig  `yaml:"server"`
 	Storage StorageConfig `yaml:"storage"`
+	Audit   AuditConfig   `yaml:"audit"`
 	HashKey string        `yaml:"hashKey" env:"KEY"`
 }
 
@@ -34,6 +41,8 @@ func Load() *Config {
 	flag.BoolVar(&cfg.Storage.Restore, "r", false, "восстанавливать данные из файла")
 	flag.StringVar(&cfg.Storage.DatabaseURL, "d", "", "URL базы данных для хранения метрик")
 	flag.StringVar(&cfg.HashKey, "k", "", "ключ для хеширования")
+	flag.StringVar(&cfg.Audit.FilePath, "audit-file", "", "путь к файлу для логов аудита")
+	flag.StringVar(&cfg.Audit.URL, "audit-url", "", "URL для отправки логов аудита")
 
 	flag.Parse()
 

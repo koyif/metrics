@@ -2,13 +2,14 @@ package app
 
 import (
 	"errors"
-	"github.com/koyif/metrics/pkg/logger"
 	"log"
 	"strings"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/pgx/v5"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+
+	"github.com/koyif/metrics/pkg/logger"
 )
 
 func RunMigrations(url string) {

@@ -2,13 +2,13 @@ package main
 
 import (
 	"context"
-	"github.com/koyif/metrics/pkg/logger"
 	"log"
 	"os/signal"
 	"syscall"
 
 	"github.com/koyif/metrics/internal/agent/app"
 	"github.com/koyif/metrics/internal/agent/config"
+	"github.com/koyif/metrics/pkg/logger"
 )
 
 func main() {

@@ -2,8 +2,9 @@ package repository
 
 import (
 	"encoding/json"
-	"github.com/koyif/metrics/pkg/logger"
 	"os"
+
+	"github.com/koyif/metrics/pkg/logger"
 
 	models "github.com/koyif/metrics/internal/models"
 )
