@@ -2,7 +2,8 @@ package repository
 
 import (
 	"context"
-	"errors"
+	"fmt"
+	"maps"
 	"sync"
 
 	"github.com/koyif/metrics/internal/models"
@@ -36,9 +37,8 @@ func (m *MetricsRepository) AllCounters() map[string]int64 {
 	defer m.mu.RUnlock()
 
 	result := make(map[string]int64, len(m.counters))
-	for k, v := range m.counters {
-		result[k] = v
-	}
+	maps.Copy(result, m.counters)
+
 	return result
 }
 
@@ -49,9 +49,8 @@ func (m *MetricsRepository) AllGauges() map[string]float64 {
 	defer m.mu.RUnlock()
 
 	result := make(map[string]float64, len(m.gauges))
-	for k, v := range m.gauges {
-		result[k] = v
-	}
+	maps.Copy(result, m.gauges)
+
 	return result
 }
 
@@ -111,16 +110,16 @@ func (m *MetricsRepository) StoreAll(metrics []models.Metrics) error {
 		switch metric.MType {
 		case models.Gauge:
 			if metric.Value == nil {
-				return errors.New("gauge value is nil")
+				return fmt.Errorf("gauge value is nil")
 			}
 			m.gauges[metric.ID] = *metric.Value
 		case models.Counter:
 			if metric.Delta == nil {
-				return errors.New("counter delta is nil")
+				return fmt.Errorf("counter delta is nil")
 			}
 			m.counters[metric.ID] += *metric.Delta
 		default:
-			return errors.New("unknown metric type")
+			return fmt.Errorf("unknown metric type")
 		}
 	}
 

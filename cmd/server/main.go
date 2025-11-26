@@ -13,7 +13,25 @@ import (
 	"github.com/koyif/metrics/internal/app"
 	"github.com/koyif/metrics/internal/config"
 	"github.com/koyif/metrics/pkg/logger"
+
+	_ "github.com/koyif/metrics/docs"
 )
+
+//	@title			Metrics Collection API
+//	@version		1.0
+//	@description	A metrics collection and alerting server for storing and retrieving counter and gauge metrics
+//	@termsOfService	http://swagger.io/terms/
+
+//	@contact.name	API Support
+//	@contact.email	support@example.com
+
+//	@license.name	MIT
+//	@license.url	https://opensource.org/licenses/MIT
+
+//	@host		localhost:8080
+//	@BasePath	/
+
+//	@schemes	http https
 
 func main() {
 	cfg := config.Load()
