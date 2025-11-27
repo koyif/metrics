@@ -49,7 +49,10 @@ func main() {
 		wg.Add(1)
 	}
 
-	application := app.New(ctx, &wg, cfg)
+	application, err := app.New(ctx, &wg, cfg)
+	if err != nil {
+		log.Fatalf("failed to initialize application: %v", err)
+	}
 
 	go startServer(application)
 
