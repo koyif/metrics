@@ -131,15 +131,3 @@ func BenchmarkPoolGetPut(b *testing.B) {
 		p.Put(obj)
 	}
 }
-
-func BenchmarkWithoutPool(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		obj := &ResetableStruct{
-			s: make([]int, 0, 100),
-			m: make(map[string]string),
-		}
-		obj.i = i
-		obj.s = append(obj.s, 1, 2, 3)
-		obj.m["key"] = "value"
-	}
-}
