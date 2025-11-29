@@ -2,7 +2,6 @@ package health_test
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"net/http/httptest"
 
@@ -27,7 +26,8 @@ func Example_healthCheck() {
 	// Send GET request
 	resp, err := http.Get(ts.URL)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Printf("Error: %v\n", err)
+		return
 	}
 	defer resp.Body.Close()
 

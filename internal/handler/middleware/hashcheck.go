@@ -13,11 +13,14 @@ import (
 )
 
 func WithHashCheck(hashKey string) func(http.Handler) http.Handler {
+	exceptions := []string{"/debug/pprof", "/swagger"}
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if strings.Contains(r.RequestURI, "/debug/pprof") {
-				h.ServeHTTP(w, r)
-				return
+			for _, e := range exceptions {
+				if strings.Contains(r.RequestURI, e) {
+					h.ServeHTTP(w, r)
+					return
+				}
 			}
 
 			headerHash := r.Header.Get("HashSHA256")

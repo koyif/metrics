@@ -37,6 +37,17 @@ func NewGaugesGetHandler(service gaugeGetter) *GaugesGetHandler {
 	}
 }
 
+// @Summary		Store gauge metric (deprecated)
+// @Description	Legacy endpoint to store a gauge metric via URL path parameters
+// @Tags			deprecated
+// @Produce		plain
+// @Param			metric	path	string	true	"Metric name"
+// @Param			value	path	number	true	"Gauge value (float)"
+// @Success		200		"OK"
+// @Failure		400		{string}	string	"Bad Request - Invalid value format"
+// @Failure		404		{string}	string	"Not Found - Empty metric name"
+// @Failure		500		{string}	string	"Internal Server Error - Storage failure"
+// @Router			/update/gauge/{metric}/{value} [post]
 func (h GaugesPostHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	mn := r.PathValue("metric")
 	value := r.PathValue("value")
@@ -69,6 +80,15 @@ func (h GaugesPostHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+// @Summary		Get gauge metric (deprecated)
+// @Description	Legacy endpoint to retrieve a gauge metric value via URL path
+// @Tags			deprecated
+// @Produce		plain
+// @Param			metric	path	string	true	"Metric name"
+// @Success		200		{string}	string	"Gauge value as plain text"
+// @Failure		404		{string}	string	"Not Found - Empty metric name or metric not found"
+// @Failure		500		{string}	string	"Internal Server Error - Retrieval failure"
+// @Router			/value/gauge/{metric} [get]
 func (h GaugesGetHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	mn := r.PathValue("metric")
 	if mn == "" {

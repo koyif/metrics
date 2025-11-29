@@ -6,6 +6,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
+	swagger "github.com/swaggo/http-swagger/v2"
+
 	"github.com/koyif/metrics/internal/handler/health"
 
 	"github.com/koyif/metrics/internal/handler"
@@ -72,6 +74,11 @@ func (app App) Router() *chi.Mux {
 	r.NotFound(handler.UnknownMetricTypeHandler)
 
 	r.Mount("/debug", middleware.Profiler())
+
+	// Swagger documentation
+	r.Get("/swagger/*", swagger.Handler(
+		swagger.URL("/swagger/doc.json"),
+	))
 
 	return r
 }

@@ -24,12 +24,13 @@ func NewPingHandler(service pingService) *PingHandler {
 	}
 }
 
-// Handle processes a health check request.
-// It performs a database ping (if database storage is configured) and returns the service status.
-//
-// Returns:
-//   - 200 OK: Service is healthy and database is reachable (response body: "pong")
-//   - 500 Internal Server Error: Database is unreachable or service is unavailable
+// @Summary		Health check
+// @Description	Check service health and database connectivity
+// @Tags			health
+// @Produce		plain
+// @Success		200	{string}	string	"pong"
+// @Failure		500	{string}	string	"Service Unavailable"
+// @Router			/ping [get]
 func (h *PingHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	if err := h.service.Ping(ctx); err != nil {

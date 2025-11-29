@@ -21,9 +21,8 @@ cmd/server/server
 vendor/
 
 # IDEs directories
-.idea
-.vscode
-/.cursorignore
+.*
+!.github
 /metrics.code-workspace
 !README.md
 *.md

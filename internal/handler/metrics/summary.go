@@ -37,6 +37,13 @@ func NewSummaryHandler(service summaryGetter) *SummaryHandler {
 	}
 }
 
+// @Summary		Get all metrics summary
+// @Description	Retrieve an HTML page displaying all stored counter and gauge metrics
+// @Tags			metrics
+// @Produce		html
+// @Success		200	{string}	string	"HTML table with all metrics"
+// @Failure		500	{string}	string	"Internal Server Error - Template failure"
+// @Router			/ [get]
 func (h *SummaryHandler) Handle(w http.ResponseWriter, _ *http.Request) {
 	res := make(map[string]string)
 
