@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os/signal"
 	"syscall"
@@ -11,7 +12,34 @@ import (
 	"github.com/koyif/metrics/pkg/logger"
 )
 
+var (
+	buildVersion string
+	buildDate    string
+	buildCommit  string
+)
+
+func printBuildInfo() {
+	version := "N/A"
+	if buildVersion != "" {
+		version = buildVersion
+	}
+	date := "N/A"
+	if buildDate != "" {
+		date = buildDate
+	}
+	commit := "N/A"
+	if buildCommit != "" {
+		commit = buildCommit
+	}
+
+	fmt.Printf("Build version: %s\n", version)
+	fmt.Printf("Build date: %s\n", date)
+	fmt.Printf("Build commit: %s\n", commit)
+}
+
 func main() {
+	printBuildInfo()
+
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatalf("error loading config: %v", err)

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
@@ -15,6 +16,12 @@ import (
 	"github.com/koyif/metrics/pkg/logger"
 
 	_ "github.com/koyif/metrics/docs"
+)
+
+var (
+	buildVersion string
+	buildDate    string
+	buildCommit  string
 )
 
 //	@title			Metrics Collection API
@@ -33,7 +40,28 @@ import (
 
 //	@schemes	http https
 
+func printBuildInfo() {
+	version := "N/A"
+	if buildVersion != "" {
+		version = buildVersion
+	}
+	date := "N/A"
+	if buildDate != "" {
+		date = buildDate
+	}
+	commit := "N/A"
+	if buildCommit != "" {
+		commit = buildCommit
+	}
+
+	fmt.Printf("Build version: %s\n", version)
+	fmt.Printf("Build date: %s\n", date)
+	fmt.Printf("Build commit: %s\n", commit)
+}
+
 func main() {
+	printBuildInfo()
+
 	cfg := config.Load()
 	if err := logger.Initialize(); err != nil {
 		log.Fatalf("error starting logger: %v", err)
