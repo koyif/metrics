@@ -2,6 +2,7 @@ package exitcheck
 
 import (
 	"go/ast"
+	"go/types"
 
 	"golang.org/x/tools/go/analysis"
 )
@@ -32,11 +33,11 @@ func run(pass *analysis.Pass) (interface{}, error) {
 			}
 
 			// Check if we're inside main function of main package
-			inMainFunc := isInMainFunc(pass, file, callExpr)
+			inMainFunc := isInMainFunc(file, callExpr)
 			isMainPkg := pass.Pkg.Name() == "main"
 
 			// Check for log.Fatal calls
-			if isLogFatal(callExpr) {
+			if isLogFatal(callExpr, pass.TypesInfo) {
 				if !isMainPkg || !inMainFunc {
 					pass.Reportf(callExpr.Pos(), "log.Fatal should only be called in main function of main package")
 				}
@@ -44,7 +45,7 @@ func run(pass *analysis.Pass) (interface{}, error) {
 			}
 
 			// Check for os.Exit calls
-			if isOsExit(callExpr) {
+			if isOsExit(callExpr, pass.TypesInfo) {
 				if !isMainPkg || !inMainFunc {
 					pass.Reportf(callExpr.Pos(), "os.Exit should only be called in main function of main package")
 				}
@@ -68,7 +69,7 @@ func isBuiltinPanic(call *ast.CallExpr) bool {
 }
 
 // isLogFatal checks if the call expression is a call to log.Fatal
-func isLogFatal(call *ast.CallExpr) bool {
+func isLogFatal(call *ast.CallExpr, info *types.Info) bool {
 	sel, ok := call.Fun.(*ast.SelectorExpr)
 	if !ok {
 		return false
@@ -79,11 +80,15 @@ func isLogFatal(call *ast.CallExpr) bool {
 		return false
 	}
 
-	return ident.Name == "log" && sel.Sel.Name == "Fatal"
+	if !isInPackage("log", ident, info) {
+		return false
+	}
+
+	return sel.Sel.Name == "Fatal"
 }
 
 // isOsExit checks if the call expression is a call to os.Exit
-func isOsExit(call *ast.CallExpr) bool {
+func isOsExit(call *ast.CallExpr, info *types.Info) bool {
 	sel, ok := call.Fun.(*ast.SelectorExpr)
 	if !ok {
 		return false
@@ -94,11 +99,29 @@ func isOsExit(call *ast.CallExpr) bool {
 		return false
 	}
 
-	return ident.Name == "os" && sel.Sel.Name == "Exit"
+	if !isInPackage("os", ident, info) {
+		return false
+	}
+
+	return sel.Sel.Name == "Exit"
+}
+
+func isInPackage(packagePath string, ident *ast.Ident, info *types.Info) bool {
+	obj := info.Uses[ident]
+	if obj == nil {
+		return false
+	}
+
+	pkgName, ok := obj.(*types.PkgName)
+	if !ok {
+		return false
+	}
+
+	return pkgName.Imported().Path() == packagePath
 }
 
 // isInMainFunc checks if the call expression is inside the main function
-func isInMainFunc(pass *analysis.Pass, file *ast.File, call *ast.CallExpr) bool {
+func isInMainFunc(file *ast.File, call *ast.CallExpr) bool {
 	var inMain bool
 
 	ast.Inspect(file, func(n ast.Node) bool {

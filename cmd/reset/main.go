@@ -53,7 +53,7 @@ func scanPackages(rootDir string) (map[string][]StructInfo, error) {
 
 	err := filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			return err
+			return fmt.Errorf("error walking %s: %w", path, err)
 		}
 
 		if info.IsDir() {
@@ -90,7 +90,7 @@ func parseFile(filename string) ([]StructInfo, error) {
 	fset := token.NewFileSet()
 	node, err := parser.ParseFile(fset, filename, nil, parser.ParseComments)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error parsing file %s: %w", filename, err)
 	}
 
 	var structs []StructInfo

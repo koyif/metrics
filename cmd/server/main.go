@@ -19,9 +19,9 @@ import (
 )
 
 var (
-	buildVersion string
-	buildDate    string
-	buildCommit  string
+	buildVersion = "N/A"
+	buildDate    = "N/A"
+	buildCommit  = "N/A"
 )
 
 //	@title			Metrics Collection API
@@ -41,22 +41,9 @@ var (
 //	@schemes	http https
 
 func printBuildInfo() {
-	version := "N/A"
-	if buildVersion != "" {
-		version = buildVersion
-	}
-	date := "N/A"
-	if buildDate != "" {
-		date = buildDate
-	}
-	commit := "N/A"
-	if buildCommit != "" {
-		commit = buildCommit
-	}
-
-	fmt.Printf("Build version: %s\n", version)
-	fmt.Printf("Build date: %s\n", date)
-	fmt.Printf("Build commit: %s\n", commit)
+	fmt.Printf("Build version: %s\n", buildVersion)
+	fmt.Printf("Build date: %s\n", buildDate)
+	fmt.Printf("Build commit: %s\n", buildCommit)
 }
 
 func main() {
