@@ -3,7 +3,6 @@ package database
 import (
 	"context"
 	"errors"
-	"log"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -19,19 +18,19 @@ type Database struct {
 	pool *pgxpool.Pool
 }
 
-func New(ctx context.Context, url string) *Database {
+func New(ctx context.Context, url string) (*Database, error) {
 	if url == "" {
-		log.Fatal("database url is empty")
+		return nil, errors.New("database url is empty")
 	}
 
 	conn, err := pgxpool.New(ctx, url)
 	if err != nil {
-		log.Fatalf("failed to connect to database: %v", err)
+		return nil, err
 	}
 
 	return &Database{
 		pool: conn,
-	}
+	}, nil
 }
 
 func (db *Database) StoreMetric(metric models.Metrics) error {

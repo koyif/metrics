@@ -33,13 +33,16 @@ type App struct {
 	AuditManager   *audit.Manager
 }
 
-func New(ctx context.Context, wg *sync.WaitGroup, cfg *config.Config) *App {
+func New(ctx context.Context, wg *sync.WaitGroup, cfg *config.Config) (*App, error) {
 	var metricsRepository metricsRepository
 	var fileService *service.FileService
 
 	if cfg.Storage.DatabaseURL != "" {
 		wg.Done()
-		db := database.New(ctx, cfg.Storage.DatabaseURL)
+		db, err := database.New(ctx, cfg.Storage.DatabaseURL)
+		if err != nil {
+			return nil, err
+		}
 		metricsRepository = repository.NewDatabaseRepository(db)
 	} else {
 		fileRepository := repository.NewFileRepository(cfg.Storage.FileStoragePath)
@@ -62,7 +65,7 @@ func New(ctx context.Context, wg *sync.WaitGroup, cfg *config.Config) *App {
 		Config:         cfg,
 		MetricsService: metricsService,
 		AuditManager:   auditManager,
-	}
+	}, nil
 }
 
 func initializeAudit(cfg *config.Config) *audit.Manager {

@@ -1,0 +1,294 @@
+basePath: /
+definitions:
+  dto.Metrics:
+    properties:
+      delta:
+        description: Delta holds the counter value increment. Non-nil only for counter
+          metrics.
+        type: integer
+      id:
+        description: ID is the unique name/identifier of the metric.
+        type: string
+      type:
+        description: 'MType specifies the metric type: "counter" or "gauge".'
+        type: string
+      value:
+        description: Value holds the gauge value. Non-nil only for gauge metrics.
+        type: number
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@example.com
+    name: API Support
+  description: A metrics collection and alerting server for storing and retrieving
+    counter and gauge metrics
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: http://swagger.io/terms/
+  title: Metrics Collection API
+  version: "1.0"
+paths:
+  /:
+    get:
+      description: Retrieve an HTML page displaying all stored counter and gauge metrics
+      produces:
+      - text/html
+      responses:
+        "200":
+          description: HTML table with all metrics
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error - Template failure
+          schema:
+            type: string
+      summary: Get all metrics summary
+      tags:
+      - metrics
+  /ping:
+    get:
+      description: Check service health and database connectivity
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: pong
+          schema:
+            type: string
+        "500":
+          description: Service Unavailable
+          schema:
+            type: string
+      summary: Health check
+      tags:
+      - health
+  /update/:
+    post:
+      consumes:
+      - application/json
+      description: Store a single counter or gauge metric with validation and optional
+        persistence
+      parameters:
+      - description: Metric data (counter with delta or gauge with value)
+        in: body
+        name: metric
+        required: true
+        schema:
+          $ref: '#/definitions/dto.Metrics'
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request - Invalid JSON or unknown metric type
+          schema:
+            type: string
+        "404":
+          description: Not Found - Empty metric ID
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error - Storage failure
+          schema:
+            type: string
+      summary: Store a single metric
+      tags:
+      - metrics
+  /update/counter/{metric}/{value}:
+    post:
+      description: Legacy endpoint to store a counter metric via URL path parameters
+      parameters:
+      - description: Metric name
+        in: path
+        name: metric
+        required: true
+        type: string
+      - description: Counter value (integer)
+        in: path
+        name: value
+        required: true
+        type: integer
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request - Invalid value format
+          schema:
+            type: string
+        "404":
+          description: Not Found - Empty metric name
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error - Storage failure
+          schema:
+            type: string
+      summary: Store counter metric (deprecated)
+      tags:
+      - deprecated
+  /update/gauge/{metric}/{value}:
+    post:
+      description: Legacy endpoint to store a gauge metric via URL path parameters
+      parameters:
+      - description: Metric name
+        in: path
+        name: metric
+        required: true
+        type: string
+      - description: Gauge value (float)
+        in: path
+        name: value
+        required: true
+        type: number
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request - Invalid value format
+          schema:
+            type: string
+        "404":
+          description: Not Found - Empty metric name
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error - Storage failure
+          schema:
+            type: string
+      summary: Store gauge metric (deprecated)
+      tags:
+      - deprecated
+  /updates/:
+    post:
+      consumes:
+      - application/json
+      description: Store an array of metrics (counters and gauges) in a single batch
+        operation
+      parameters:
+      - description: Array of metrics to store
+        in: body
+        name: metrics
+        required: true
+        schema:
+          items:
+            $ref: '#/definitions/dto.Metrics'
+          type: array
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request - Invalid JSON format
+          schema:
+            type: string
+        "404":
+          description: Not Found - Empty metric ID or empty array
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error - Storage failure
+          schema:
+            type: string
+      summary: Store multiple metrics in batch
+      tags:
+      - metrics
+  /value/:
+    post:
+      consumes:
+      - application/json
+      description: Retrieve the current value of a counter or gauge metric
+      parameters:
+      - description: Metric identifier (id and type required)
+        in: body
+        name: metric
+        required: true
+        schema:
+          $ref: '#/definitions/dto.Metrics'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Metric with current value (delta for counter, value for gauge)
+          schema:
+            $ref: '#/definitions/dto.Metrics'
+        "400":
+          description: Bad Request - Invalid JSON or unknown metric type
+          schema:
+            type: string
+        "404":
+          description: Not Found - Empty metric ID or metric not found
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error - Retrieval failure
+          schema:
+            type: string
+      summary: Get a metric value
+      tags:
+      - metrics
+  /value/counter/{metric}:
+    get:
+      description: Legacy endpoint to retrieve a counter metric value via URL path
+      parameters:
+      - description: Metric name
+        in: path
+        name: metric
+        required: true
+        type: string
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: Counter value as plain text
+          schema:
+            type: string
+        "404":
+          description: Not Found - Empty metric name or metric not found
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error - Retrieval failure
+          schema:
+            type: string
+      summary: Get counter metric (deprecated)
+      tags:
+      - deprecated
+  /value/gauge/{metric}:
+    get:
+      description: Legacy endpoint to retrieve a gauge metric value via URL path
+      parameters:
+      - description: Metric name
+        in: path
+        name: metric
+        required: true
+        type: string
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: Gauge value as plain text
+          schema:
+            type: string
+        "404":
+          description: Not Found - Empty metric name or metric not found
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error - Retrieval failure
+          schema:
+            type: string
+      summary: Get gauge metric (deprecated)
+      tags:
+      - deprecated
+schemes:
+- http
+- https
+swagger: "2.0"

@@ -89,18 +89,17 @@ func NewGetHandler(service metricsGetter) *GetHandler {
 	}
 }
 
-// Handle processes a single metric storage request.
-// Expected JSON format: {"id": "metric_name", "type": "counter|gauge", "delta": 123, "value": 45.67}
-//
-// The handler validates the metric type and ID, stores the metric,
-// and optionally triggers immediate persistence if StoreInterval is 0.
-// Audit events are generated for successful storage operations.
-//
-// Returns:
-//   - 200 OK: Metric stored successfully
-//   - 400 Bad Request: Invalid JSON format, unknown metric type, or nil value
-//   - 404 Not Found: Empty metric ID
-//   - 500 Internal Server Error: Storage or persistence failure
+// @Summary		Store a single metric
+// @Description	Store a single counter or gauge metric with validation and optional persistence
+// @Tags			metrics
+// @Accept			json
+// @Produce		plain
+// @Param			metric	body	dto.Metrics	true	"Metric data (counter with delta or gauge with value)"
+// @Success		200		"OK"
+// @Failure		400		{string}	string	"Bad Request - Invalid JSON or unknown metric type"
+// @Failure		404		{string}	string	"Not Found - Empty metric ID"
+// @Failure		500		{string}	string	"Internal Server Error - Storage failure"
+// @Router			/update/ [post]
 func (sh StoreHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	var m dto.Metrics
 
@@ -144,17 +143,17 @@ func (sh StoreHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// Handle processes a batch metric storage request.
-// Expected JSON format: [{"id": "metric1", "type": "counter", "delta": 1}, {"id": "metric2", "type": "gauge", "value": 2.5}]
-//
-// The handler validates all metrics, stores them in a single batch operation,
-// and generates audit events for the batch.
-//
-// Returns:
-//   - 200 OK: All metrics stored successfully
-//   - 400 Bad Request: Invalid JSON format
-//   - 404 Not Found: Empty metric ID or empty metrics array
-//   - 500 Internal Server Error: Storage failure
+// @Summary		Store multiple metrics in batch
+// @Description	Store an array of metrics (counters and gauges) in a single batch operation
+// @Tags			metrics
+// @Accept			json
+// @Produce		plain
+// @Param			metrics	body	[]dto.Metrics	true	"Array of metrics to store"
+// @Success		200		"OK"
+// @Failure		400		{string}	string	"Bad Request - Invalid JSON format"
+// @Failure		404		{string}	string	"Not Found - Empty metric ID or empty array"
+// @Failure		500		{string}	string	"Internal Server Error - Storage failure"
+// @Router			/updates/ [post]
 func (sh StoreAllHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	var m []dto.Metrics
 
@@ -210,17 +209,17 @@ func (sh StoreAllHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// Handle processes a metric retrieval request.
-// Expected JSON format: {"id": "metric_name", "type": "counter|gauge"}
-//
-// The handler retrieves the metric value and returns it in the response
-// with the same JSON structure, populating either delta (for counters) or value (for gauges).
-//
-// Returns:
-//   - 200 OK: Metric found and returned in JSON response body
-//   - 400 Bad Request: Invalid JSON format or unknown metric type
-//   - 404 Not Found: Empty metric ID or metric not found in storage
-//   - 500 Internal Server Error: Retrieval failure or JSON encoding error
+// @Summary		Get a metric value
+// @Description	Retrieve the current value of a counter or gauge metric
+// @Tags			metrics
+// @Accept			json
+// @Produce		json
+// @Param			metric	body		dto.Metrics	true	"Metric identifier (id and type required)"
+// @Success		200		{object}	dto.Metrics	"Metric with current value (delta for counter, value for gauge)"
+// @Failure		400		{string}	string		"Bad Request - Invalid JSON or unknown metric type"
+// @Failure		404		{string}	string		"Not Found - Empty metric ID or metric not found"
+// @Failure		500		{string}	string		"Internal Server Error - Retrieval failure"
+// @Router			/value/ [post]
 func (gh GetHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	var m dto.Metrics
 

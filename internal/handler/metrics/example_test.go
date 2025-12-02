@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"time"
@@ -47,7 +46,8 @@ func Example_storeCounter() {
 	// Send POST request
 	resp, err := http.Post(ts.URL, "application/json", bytes.NewReader(body))
 	if err != nil {
-		log.Fatal(err)
+		fmt.Printf("Error: %v\n", err)
+		return
 	}
 	defer resp.Body.Close()
 
@@ -84,7 +84,8 @@ func Example_storeGauge() {
 	// Send POST request
 	resp, err := http.Post(ts.URL, "application/json", bytes.NewReader(body))
 	if err != nil {
-		log.Fatal(err)
+		fmt.Printf("Error: %v\n", err)
+		return
 	}
 	defer resp.Body.Close()
 
@@ -133,7 +134,8 @@ func Example_batchStore() {
 	// Send POST request
 	resp, err := http.Post(ts.URL, "application/json", bytes.NewReader(body))
 	if err != nil {
-		log.Fatal(err)
+		fmt.Printf("Error: %v\n", err)
+		return
 	}
 	defer resp.Body.Close()
 
@@ -167,7 +169,8 @@ func Example_getCounter() {
 	// Send POST request
 	resp, err := http.Post(ts.URL, "application/json", bytes.NewReader(body))
 	if err != nil {
-		log.Fatal(err)
+		fmt.Printf("Error: %v\n", err)
+		return
 	}
 	defer resp.Body.Close()
 
@@ -206,7 +209,8 @@ func Example_getGauge() {
 	// Send POST request
 	resp, err := http.Post(ts.URL, "application/json", bytes.NewReader(body))
 	if err != nil {
-		log.Fatal(err)
+		fmt.Printf("Error: %v\n", err)
+		return
 	}
 	defer resp.Body.Close()
 
@@ -244,7 +248,8 @@ func Example_counterAccumulation() {
 	body1, _ := json.Marshal(metric1)
 	resp, err := http.Post(storeServer.URL, "application/json", bytes.NewReader(body1))
 	if err != nil {
-		log.Fatal(err)
+		fmt.Printf("Error: %v\n", err)
+		return
 	}
 
 	defer resp.Body.Close()
@@ -258,7 +263,8 @@ func Example_counterAccumulation() {
 	body2, _ := json.Marshal(metric2)
 	resp, err = http.Post(storeServer.URL, "application/json", bytes.NewReader(body2))
 	if err != nil {
-		log.Fatal(err)
+		fmt.Printf("Error: %v\n", err)
+		return
 	}
 
 	defer resp.Body.Close()
@@ -274,7 +280,8 @@ func Example_counterAccumulation() {
 	getBody, _ := json.Marshal(getMetric)
 	resp, err = http.Post(getServer.URL, "application/json", bytes.NewReader(getBody))
 	if err != nil {
-		log.Fatal(err)
+		fmt.Printf("Error: %v\n", err)
+		return
 	}
 	defer resp.Body.Close()
 
