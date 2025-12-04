@@ -3,6 +3,7 @@ package client
 import (
 	"bytes"
 	"crypto/hmac"
+	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/koyif/metrics/internal/agent/config"
 	"github.com/koyif/metrics/internal/models"
+	"github.com/koyif/metrics/pkg/crypto"
 	"github.com/koyif/metrics/pkg/errutil"
 	"github.com/koyif/metrics/pkg/logger"
 )
@@ -21,6 +23,7 @@ type MetricsClient struct {
 	httpClient *http.Client
 	baseURL    *url.URL
 	cfg        *config.Config
+	publicKey  *rsa.PublicKey
 }
 
 const errClosingResponseBody = "error closing response body"
@@ -31,11 +34,22 @@ func New(cfg *config.Config, c *http.Client) (*MetricsClient, error) {
 		return nil, fmt.Errorf("error creating MetricsClient: %w", err)
 	}
 
-	return &MetricsClient{
+	client := &MetricsClient{
 		httpClient: c,
 		baseURL:    baseURL,
 		cfg:        cfg,
-	}, nil
+	}
+
+	if cfg.CryptoKey != "" {
+		publicKey, err := crypto.LoadPublicKey(cfg.CryptoKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load public key: %w", err)
+		}
+		client.publicKey = publicKey
+		logger.Log.Info("public key loaded successfully for encryption")
+	}
+
+	return client, nil
 }
 
 func (c *MetricsClient) SendMetric(metric models.Metrics) error {
@@ -94,9 +108,24 @@ func (c *MetricsClient) retry(updatesURL *url.URL, requestBody []byte) error {
 	var response *http.Response
 	var classifier = NewHTTPErrorClassifier()
 
-	req, err := http.NewRequest(http.MethodPost, updatesURL.String(), bytes.NewReader(requestBody))
+	dataToSend := requestBody
+	if c.publicKey != nil {
+		encryptedData, err := crypto.EncryptData(c.publicKey, requestBody)
+		if err != nil {
+			return fmt.Errorf("failed to encrypt request body: %w", err)
+		}
+		dataToSend = encryptedData
+	}
+
+	req, err := http.NewRequest(http.MethodPost, updatesURL.String(), bytes.NewReader(dataToSend))
 	if err != nil {
 		return fmt.Errorf("error creating request: %w", err)
+	}
+
+	if c.publicKey != nil {
+		req.Header.Set("Content-Type", "application/octet-stream")
+	} else {
+		req.Header.Set("Content-Type", "application/json")
 	}
 
 	if c.cfg.HashKey != "" {

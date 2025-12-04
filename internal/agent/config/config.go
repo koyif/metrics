@@ -20,6 +20,7 @@ type Config struct {
 	ReportInterval types.DurationInSeconds `yaml:"reportInterval" env:"REPORT_INTERVAL" env-default:"10"`
 	HashKey        string                  `yaml:"hashKey" env:"KEY"`
 	RateLimit      int                     `yaml:"rateLimit" env:"RATE_LIMIT" env-default:"3"`
+	CryptoKey      string                  `yaml:"cryptoKey" env:"CRYPTO_KEY"`
 }
 
 func Load() (*Config, error) {
@@ -30,6 +31,7 @@ func Load() (*Config, error) {
 	flag.StringVar(&cfg.HashKey, "k", "", "ключ для хеширования")
 	flag.IntVar(&cfg.RateLimit, "l", 3, "лимит одновременной отправки метрик")
 	flag.StringVar(&cfg.Server.Addr, "a", "localhost:8080", "адрес эндпоинта HTTP-сервера")
+	flag.StringVar(&cfg.CryptoKey, "crypto-key", "", "путь до файла с публичным ключом")
 
 	flag.Parse()
 

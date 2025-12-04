@@ -26,10 +26,11 @@ type StorageConfig struct {
 }
 
 type Config struct {
-	Server  ServerConfig  `yaml:"server"`
-	Storage StorageConfig `yaml:"storage"`
-	Audit   AuditConfig   `yaml:"audit"`
-	HashKey string        `yaml:"hashKey" env:"KEY"`
+	Server    ServerConfig  `yaml:"server"`
+	Storage   StorageConfig `yaml:"storage"`
+	Audit     AuditConfig   `yaml:"audit"`
+	HashKey   string        `yaml:"hashKey" env:"KEY"`
+	CryptoKey string        `yaml:"cryptoKey" env:"CRYPTO_KEY"`
 }
 
 func Load() *Config {
@@ -43,6 +44,7 @@ func Load() *Config {
 	flag.StringVar(&cfg.HashKey, "k", "", "ключ для хеширования")
 	flag.StringVar(&cfg.Audit.FilePath, "audit-file", "", "путь к файлу для логов аудита")
 	flag.StringVar(&cfg.Audit.URL, "audit-url", "", "URL для отправки логов аудита")
+	flag.StringVar(&cfg.CryptoKey, "crypto-key", "", "путь до файла с приватным ключом")
 
 	flag.Parse()
 

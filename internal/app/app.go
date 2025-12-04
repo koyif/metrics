@@ -2,10 +2,12 @@ package app
 
 import (
 	"context"
+	"crypto/rsa"
 	"errors"
 	"io"
 	"sync"
 
+	"github.com/koyif/metrics/pkg/crypto"
 	"github.com/koyif/metrics/pkg/logger"
 
 	"github.com/koyif/metrics/internal/audit"
@@ -31,6 +33,7 @@ type App struct {
 	Config         *config.Config
 	MetricsService *service.MetricsService
 	AuditManager   *audit.Manager
+	PrivateKey     *rsa.PrivateKey
 }
 
 func New(ctx context.Context, wg *sync.WaitGroup, cfg *config.Config) (*App, error) {
@@ -61,10 +64,21 @@ func New(ctx context.Context, wg *sync.WaitGroup, cfg *config.Config) (*App, err
 
 	auditManager := initializeAudit(cfg)
 
+	var privateKey *rsa.PrivateKey
+	if cfg.CryptoKey != "" {
+		key, err := crypto.LoadPrivateKey(cfg.CryptoKey)
+		if err != nil {
+			return nil, err
+		}
+		privateKey = key
+		logger.Log.Info("private key loaded successfully for decryption")
+	}
+
 	return &App{
 		Config:         cfg,
 		MetricsService: metricsService,
 		AuditManager:   auditManager,
+		PrivateKey:     privateKey,
 	}, nil
 }
 
