@@ -22,6 +22,10 @@ func (app App) Router() *chi.Mux {
 	r.Use(custommiddleware.WithLogger)
 	r.Use(custommiddleware.WithGzip)
 
+	if app.PrivateKey != nil {
+		r.Use(custommiddleware.WithDecryption(app.PrivateKey))
+	}
+
 	if app.Config.HashKey != "" {
 		r.Use(custommiddleware.WithHashCheck(app.Config.HashKey))
 	}

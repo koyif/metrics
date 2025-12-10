@@ -350,7 +350,7 @@ func TestStoreHandler_Handle(t *testing.T) {
 			name: "malformed JSON request",
 			given: given{
 				config: &config.Config{
-					Storage: config.StorageConfig{StoreInterval: types.DurationInSeconds(300 * time.Second)},
+					StoreInterval: types.DurationInSeconds(300 * time.Second),
 				},
 			},
 			when: when{
@@ -367,7 +367,7 @@ func TestStoreHandler_Handle(t *testing.T) {
 			name: "empty metrics name",
 			given: given{
 				config: &config.Config{
-					Storage: config.StorageConfig{StoreInterval: types.DurationInSeconds(300 * time.Second)},
+					StoreInterval: types.DurationInSeconds(300 * time.Second),
 				},
 			},
 			when: when{
@@ -386,7 +386,7 @@ func TestStoreHandler_Handle(t *testing.T) {
 			name: "unknown metrics type",
 			given: given{
 				config: &config.Config{
-					Storage: config.StorageConfig{StoreInterval: types.DurationInSeconds(300 * time.Second)},
+					StoreInterval: types.DurationInSeconds(300 * time.Second),
 				},
 			},
 			when: when{
@@ -405,7 +405,7 @@ func TestStoreHandler_Handle(t *testing.T) {
 			name: "empty delta in counter metrics type",
 			given: given{
 				config: &config.Config{
-					Storage: config.StorageConfig{StoreInterval: types.DurationInSeconds(300 * time.Second)},
+					StoreInterval: types.DurationInSeconds(300 * time.Second),
 				},
 			},
 			when: when{
@@ -424,7 +424,7 @@ func TestStoreHandler_Handle(t *testing.T) {
 			name: "empty value in gauge metrics type",
 			given: given{
 				config: &config.Config{
-					Storage: config.StorageConfig{StoreInterval: types.DurationInSeconds(300 * time.Second)},
+					StoreInterval: types.DurationInSeconds(300 * time.Second),
 				},
 			},
 			when: when{
@@ -443,7 +443,7 @@ func TestStoreHandler_Handle(t *testing.T) {
 			name: "counter storing error",
 			given: given{
 				config: &config.Config{
-					Storage: config.StorageConfig{StoreInterval: types.DurationInSeconds(300 * time.Second)},
+					StoreInterval: types.DurationInSeconds(300 * time.Second),
 				},
 			},
 			when: when{
@@ -463,7 +463,7 @@ func TestStoreHandler_Handle(t *testing.T) {
 			name: "gauge storing error",
 			given: given{
 				config: &config.Config{
-					Storage: config.StorageConfig{StoreInterval: types.DurationInSeconds(300 * time.Second)},
+					StoreInterval: types.DurationInSeconds(300 * time.Second),
 				},
 			},
 			when: when{
@@ -483,7 +483,7 @@ func TestStoreHandler_Handle(t *testing.T) {
 			name: "counter successfully stored",
 			given: given{
 				config: &config.Config{
-					Storage: config.StorageConfig{StoreInterval: types.DurationInSeconds(300 * time.Second)},
+					StoreInterval: types.DurationInSeconds(300 * time.Second),
 				},
 			},
 			when: when{
@@ -507,7 +507,7 @@ func TestStoreHandler_Handle(t *testing.T) {
 			name: "gauge successfully stored",
 			given: given{
 				config: &config.Config{
-					Storage: config.StorageConfig{StoreInterval: types.DurationInSeconds(300 * time.Second)},
+					StoreInterval: types.DurationInSeconds(300 * time.Second),
 				},
 			},
 			when: when{
@@ -531,7 +531,7 @@ func TestStoreHandler_Handle(t *testing.T) {
 			name: "counter with zero value",
 			given: given{
 				config: &config.Config{
-					Storage: config.StorageConfig{StoreInterval: types.DurationInSeconds(300 * time.Second)},
+					StoreInterval: types.DurationInSeconds(300 * time.Second),
 				},
 			},
 			when: when{
@@ -555,7 +555,7 @@ func TestStoreHandler_Handle(t *testing.T) {
 			name: "gauge with zero value",
 			given: given{
 				config: &config.Config{
-					Storage: config.StorageConfig{StoreInterval: types.DurationInSeconds(300 * time.Second)},
+					StoreInterval: types.DurationInSeconds(300 * time.Second),
 				},
 			},
 			when: when{
@@ -579,7 +579,7 @@ func TestStoreHandler_Handle(t *testing.T) {
 			name: "counter with negative value",
 			given: given{
 				config: &config.Config{
-					Storage: config.StorageConfig{StoreInterval: types.DurationInSeconds(300 * time.Second)},
+					StoreInterval: types.DurationInSeconds(300 * time.Second),
 				},
 			},
 			when: when{
@@ -603,7 +603,7 @@ func TestStoreHandler_Handle(t *testing.T) {
 			name: "gauge with negative value",
 			given: given{
 				config: &config.Config{
-					Storage: config.StorageConfig{StoreInterval: types.DurationInSeconds(300 * time.Second)},
+					StoreInterval: types.DurationInSeconds(300 * time.Second),
 				},
 			},
 			when: when{
@@ -627,7 +627,7 @@ func TestStoreHandler_Handle(t *testing.T) {
 			name: "counter with max value",
 			given: given{
 				config: &config.Config{
-					Storage: config.StorageConfig{StoreInterval: types.DurationInSeconds(300 * time.Second)},
+					StoreInterval: types.DurationInSeconds(300 * time.Second),
 				},
 			},
 			when: when{
@@ -651,7 +651,7 @@ func TestStoreHandler_Handle(t *testing.T) {
 			name: "gauge with max value",
 			given: given{
 				config: &config.Config{
-					Storage: config.StorageConfig{StoreInterval: types.DurationInSeconds(300 * time.Second)},
+					StoreInterval: types.DurationInSeconds(300 * time.Second),
 				},
 			},
 			when: when{
@@ -758,7 +758,7 @@ func TestStoreHandler_PersistBehavior(t *testing.T) {
 			mock := NewMockMetricsRepository()
 
 			cfg := &config.Config{
-				Storage: config.StorageConfig{StoreInterval: types.DurationInSeconds(tt.storeInterval)},
+				StoreInterval: types.DurationInSeconds(tt.storeInterval),
 			}
 
 			handler := NewStoreHandler(mock, cfg, nil)

@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"math/rand/v2"
+	"sync"
 	"time"
 
 	"github.com/koyif/metrics/internal/agent/config"
@@ -27,17 +28,42 @@ func New(cfg *config.Config, cl metricsClient) *Agent {
 	}
 }
 
-func (a *Agent) Start(ctx context.Context, ch <-chan []models.Metrics) {
+func (a *Agent) Start(ctx context.Context, wg *sync.WaitGroup, ch <-chan []models.Metrics) {
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		reportTicker := time.NewTicker(a.cfg.ReportInterval.Value())
+		defer reportTicker.Stop()
 
 		for {
 			select {
 			case <-ctx.Done():
-				reportTicker.Stop()
-				return
+				logger.Log.Info("agent received shutdown signal, flushing remaining metrics")
+				// Try to send any remaining metrics in the channel
+				for {
+					select {
+					case metrics, ok := <-ch:
+						if !ok {
+							logger.Log.Info("metrics channel closed")
+							return
+						}
+						a.reportMetrics(metrics)
+					case <-time.After(100 * time.Millisecond):
+						logger.Log.Info("no more metrics to send")
+						return
+					}
+				}
 			case <-reportTicker.C:
-				a.reportMetrics(<-ch)
+				select {
+				case metrics, ok := <-ch:
+					if !ok {
+						logger.Log.Info("metrics channel closed, stopping agent")
+						return
+					}
+					a.reportMetrics(metrics)
+				default:
+					logger.Log.Debug("no metrics available to send")
+				}
 			}
 		}
 	}()
