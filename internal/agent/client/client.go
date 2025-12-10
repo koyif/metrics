@@ -29,7 +29,7 @@ type MetricsClient struct {
 const errClosingResponseBody = "error closing response body"
 
 func New(cfg *config.Config, c *http.Client) (*MetricsClient, error) {
-	baseURL, err := url.Parse(fmt.Sprintf("http://%s", cfg.Server.Addr))
+	baseURL, err := url.Parse(fmt.Sprintf("http://%s", cfg.Addr))
 	if err != nil {
 		return nil, fmt.Errorf("error creating MetricsClient: %w", err)
 	}

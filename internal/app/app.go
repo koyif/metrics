@@ -40,24 +40,24 @@ func New(ctx context.Context, wg *sync.WaitGroup, cfg *config.Config) (*App, err
 	var metricsRepository metricsRepository
 	var fileService *service.FileService
 
-	if cfg.Storage.DatabaseURL != "" {
+	if cfg.DatabaseURL != "" {
 		wg.Done()
-		db, err := database.New(ctx, cfg.Storage.DatabaseURL)
+		db, err := database.New(ctx, cfg.DatabaseURL)
 		if err != nil {
 			return nil, err
 		}
 		metricsRepository = repository.NewDatabaseRepository(db)
 	} else {
-		fileRepository := repository.NewFileRepository(cfg.Storage.FileStoragePath)
+		fileRepository := repository.NewFileRepository(cfg.FileStoragePath)
 		metricsRepository = repository.NewMetricsRepository()
 		fileService = service.NewFileService(fileRepository, metricsRepository)
-		if cfg.Storage.Restore {
+		if cfg.Restore {
 			if err := fileService.Restore(); err != nil && !errors.Is(err, io.EOF) {
 				logger.Log.Error("error restoring metrics", logger.Error(err))
 			}
 		}
 
-		fileService.SchedulePersist(ctx, wg, cfg.Storage.StoreInterval.Value())
+		fileService.SchedulePersist(ctx, wg, cfg.StoreInterval.Value())
 	}
 
 	metricsService := service.NewMetricsService(metricsRepository, fileService)
@@ -85,23 +85,23 @@ func New(ctx context.Context, wg *sync.WaitGroup, cfg *config.Config) (*App, err
 func initializeAudit(cfg *config.Config) *audit.Manager {
 	manager := audit.NewManager()
 
-	if cfg.Audit.FilePath != "" {
-		fileAuditor, err := audit.NewFileAuditor(cfg.Audit.FilePath)
+	if cfg.FilePath != "" {
+		fileAuditor, err := audit.NewFileAuditor(cfg.FilePath)
 		if err != nil {
 			logger.Log.Error("failed to create file auditor", logger.Error(err))
 		} else {
 			manager.AddObserver(fileAuditor)
-			logger.Log.Info("file audit enabled", logger.String("path", cfg.Audit.FilePath))
+			logger.Log.Info("file audit enabled", logger.String("path", cfg.FilePath))
 		}
 	}
 
-	if cfg.Audit.URL != "" {
-		httpAuditor, err := audit.NewHTTPAuditor(cfg.Audit.URL)
+	if cfg.URL != "" {
+		httpAuditor, err := audit.NewHTTPAuditor(cfg.URL)
 		if err != nil {
 			logger.Log.Error("failed to create HTTP auditor", logger.Error(err))
 		} else {
 			manager.AddObserver(httpAuditor)
-			logger.Log.Info("HTTP audit enabled", logger.String("url", cfg.Audit.URL))
+			logger.Log.Info("HTTP audit enabled", logger.String("url", cfg.URL))
 		}
 	}
 

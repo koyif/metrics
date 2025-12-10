@@ -60,7 +60,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	if cfg.Storage.StoreInterval.Value() != 0 {
+	if cfg.StoreInterval.Value() != 0 {
 		wg.Add(1)
 	}
 
@@ -78,12 +78,12 @@ func main() {
 
 func runMigrations(cfg *config.Config) {
 	logger.Log.Info("running database migrations")
-	app.RunMigrations(cfg.Storage.DatabaseURL)
+	app.RunMigrations(cfg.DatabaseURL)
 }
 
 func startServer(a *app.App) {
-	logger.Log.Info("starting server", logger.String("address", a.Config.Server.Addr))
-	if err := http.ListenAndServe(a.Config.Server.Addr, a.Router()); err != nil && !errors.Is(err, http.ErrServerClosed) {
+	logger.Log.Info("starting server", logger.String("address", a.Config.Addr))
+	if err := http.ListenAndServe(a.Config.Addr, a.Router()); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		logger.Log.Error("server error", logger.Error(err))
 	}
 }

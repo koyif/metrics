@@ -2,8 +2,8 @@ package config
 
 import (
 	"flag"
-	"fmt"
 	"log"
+	"os"
 
 	"github.com/ilyakaznacheev/cleanenv"
 
@@ -11,36 +11,68 @@ import (
 )
 
 type ServerConfig struct {
-	Addr string `yaml:"addr" env:"ADDRESS" env-default:"localhost:8080"`
 }
 
 type Config struct {
-	Server         ServerConfig            `yaml:"server"`
-	PollInterval   types.DurationInSeconds `yaml:"pollInterval" env:"POLL_INTERVAL" env-default:"2"`
-	ReportInterval types.DurationInSeconds `yaml:"reportInterval" env:"REPORT_INTERVAL" env-default:"10"`
-	HashKey        string                  `yaml:"hashKey" env:"KEY"`
-	RateLimit      int                     `yaml:"rateLimit" env:"RATE_LIMIT" env-default:"3"`
-	CryptoKey      string                  `yaml:"cryptoKey" env:"CRYPTO_KEY"`
+	Addr           string                  `json:"address" env:"ADDRESS" env-default:"localhost:8080"`
+	PollInterval   types.DurationInSeconds `json:"poll_interval" env:"POLL_INTERVAL" env-default:"2"`
+	ReportInterval types.DurationInSeconds `json:"report_interval" env:"REPORT_INTERVAL" env-default:"10"`
+	HashKey        string                  `json:"hash_key" env:"KEY"`
+	RateLimit      int                     `json:"rate_limit" env:"RATE_LIMIT" env-default:"3"`
+	CryptoKey      string                  `json:"crypto_key" env:"CRYPTO_KEY"`
+	ConfigPath     string                  `json:"-"`
 }
 
 func Load() (*Config, error) {
 	cfg := &Config{}
 
-	flag.Func("p", "частота опроса метрик из пакета runtime в секундах", func(s string) error { return cfg.PollInterval.SetValue(s) })
-	flag.Func("r", "частота отправки метрик на сервер в секундах", func(s string) error { return cfg.ReportInterval.SetValue(s) })
-	flag.StringVar(&cfg.HashKey, "k", "", "ключ для хеширования")
-	flag.IntVar(&cfg.RateLimit, "l", 3, "лимит одновременной отправки метрик")
-	flag.StringVar(&cfg.Server.Addr, "a", "localhost:8080", "адрес эндпоинта HTTP-сервера")
-	flag.StringVar(&cfg.CryptoKey, "crypto-key", "", "путь до файла с публичным ключом")
+	setupFlags(cfg)
 
-	flag.Parse()
-
-	err := cleanenv.ReadEnv(cfg)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't read environment variables: %w", err)
+	if cfg.ConfigPath == "" {
+		cfg.ConfigPath = os.Getenv("CONFIG")
 	}
+
+	if cfg.ConfigPath != "" {
+		loadJSONConfig(cfg)
+	}
+
+	applyEnvVars(cfg)
+
+	setupFlags(cfg)
 
 	log.Printf("loaded config: %+v", cfg)
 
 	return cfg, nil
+}
+
+func loadJSONConfig(cfg *Config) {
+	err := cleanenv.ReadConfig(cfg.ConfigPath, cfg)
+	if err != nil {
+		log.Printf("warning: couldn't read JSON config from %s: %s", cfg.ConfigPath, err)
+		return
+	}
+
+	log.Printf("loaded JSON config from %s", cfg.ConfigPath)
+}
+
+func applyEnvVars(cfg *Config) {
+	err := cleanenv.ReadEnv(cfg)
+	if err != nil {
+		log.Printf("warning: couldn't read environment variables: %s", err.Error())
+	}
+}
+
+func setupFlags(cfg *Config) {
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	flag.StringVar(&cfg.ConfigPath, "c", cfg.ConfigPath, "путь к файлу конфигурации")
+	flag.StringVar(&cfg.ConfigPath, "config", cfg.ConfigPath, "путь к файлу конфигурации")
+
+	flag.Func("p", "частота опроса метрик из пакета runtime в секундах", func(s string) error { return cfg.PollInterval.SetValue(s) })
+	flag.Func("r", "частота отправки метрик на сервер в секундах", func(s string) error { return cfg.ReportInterval.SetValue(s) })
+	flag.StringVar(&cfg.HashKey, "k", cfg.HashKey, "ключ для хеширования")
+	flag.IntVar(&cfg.RateLimit, "l", cfg.RateLimit, "лимит одновременной отправки метрик")
+	flag.StringVar(&cfg.Addr, "a", cfg.Addr, "адрес эндпоинта HTTP-сервера")
+	flag.StringVar(&cfg.CryptoKey, "crypto-key", cfg.CryptoKey, "путь до файла с публичным ключом")
+
+	flag.Parse()
 }
