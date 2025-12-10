@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/koyif/metrics/internal/app"
 	"github.com/koyif/metrics/internal/config"
@@ -57,7 +58,7 @@ func main() {
 	runMigrations(cfg)
 
 	wg := sync.WaitGroup{}
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	defer stop()
 
 	if cfg.StoreInterval.Value() != 0 {
@@ -69,11 +70,23 @@ func main() {
 		log.Fatalf("failed to initialize application: %v", err)
 	}
 
-	go startServer(application)
+	server := startServer(application)
 
 	<-ctx.Done()
-	logger.Log.Info("shutting down")
+	logger.Log.Info("shutting down gracefully")
+
+	// Create shutdown context with timeout
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// Shutdown HTTP server gracefully
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		logger.Log.Error("server shutdown error", logger.Error(err))
+	}
+
+	// Wait for background tasks (file persistence) to complete
 	wg.Wait()
+	logger.Log.Info("shutdown complete")
 }
 
 func runMigrations(cfg *config.Config) {
@@ -81,9 +94,18 @@ func runMigrations(cfg *config.Config) {
 	app.RunMigrations(cfg.DatabaseURL)
 }
 
-func startServer(a *app.App) {
-	logger.Log.Info("starting server", logger.String("address", a.Config.Addr))
-	if err := http.ListenAndServe(a.Config.Addr, a.Router()); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		logger.Log.Error("server error", logger.Error(err))
+func startServer(a *app.App) *http.Server {
+	server := &http.Server{
+		Addr:    a.Config.Addr,
+		Handler: a.Router(),
 	}
+
+	go func() {
+		logger.Log.Info("starting server", logger.String("address", a.Config.Addr))
+		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			logger.Log.Error("server error", logger.Error(err))
+		}
+	}()
+
+	return server
 }

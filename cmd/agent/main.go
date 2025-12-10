@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"log"
 	"os/signal"
+	"sync"
 	"syscall"
+	"time"
 
 	"github.com/koyif/metrics/internal/agent/app"
 	"github.com/koyif/metrics/internal/agent/config"
@@ -38,13 +40,27 @@ func main() {
 
 	a := app.New(cfg)
 
-	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
 	defer cancel()
 
-	if err := a.Run(ctx); err != nil {
+	wg := sync.WaitGroup{}
+	if err := a.Run(ctx, &wg); err != nil {
 		logger.Log.Fatal("error running agent", logger.Error(err))
 	}
 
 	<-ctx.Done()
-	logger.Log.Info("shutting down")
+	logger.Log.Info("shutting down gracefully")
+
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		logger.Log.Info("shutdown complete")
+	case <-time.After(5 * time.Second):
+		logger.Log.Warn("shutdown timeout exceeded")
+	}
 }
