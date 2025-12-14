@@ -5,7 +5,6 @@ import (
 	"crypto/rsa"
 	"io"
 	"net/http"
-	"strings"
 
 	"github.com/koyif/metrics/pkg/crypto"
 	"github.com/koyif/metrics/pkg/logger"
@@ -15,15 +14,8 @@ import (
 // If the Content-Type is "application/octet-stream", it assumes the body is encrypted
 // and decrypts it using the provided private key.
 func WithDecryption(privateKey *rsa.PrivateKey) func(http.Handler) http.Handler {
-	exceptions := []string{"/debug/pprof", "/swagger"}
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			for _, e := range exceptions {
-				if strings.Contains(r.RequestURI, e) {
-					h.ServeHTTP(w, r)
-					return
-				}
-			}
 
 			const contentTypeHeaderName = "Content-Type"
 			contentType := r.Header.Get(contentTypeHeaderName)

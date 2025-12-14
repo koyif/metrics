@@ -48,7 +48,7 @@ func Load() (*Config, error) {
 func loadJSONConfig(cfg *Config) {
 	err := cleanenv.ReadConfig(cfg.ConfigPath, cfg)
 	if err != nil {
-		log.Printf("warning: couldn't read JSON config from %s: %s", cfg.ConfigPath, err)
+		log.Fatalf("couldn't read JSON config from %s: %s", cfg.ConfigPath, err)
 		return
 	}
 
@@ -58,7 +58,7 @@ func loadJSONConfig(cfg *Config) {
 func applyEnvVars(cfg *Config) {
 	err := cleanenv.ReadEnv(cfg)
 	if err != nil {
-		log.Printf("warning: couldn't read environment variables: %s", err.Error())
+		log.Fatalf("couldn't read environment variables: %s", err.Error())
 	}
 }
 

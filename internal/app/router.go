@@ -22,14 +22,6 @@ func (app App) Router() *chi.Mux {
 	r.Use(custommiddleware.WithLogger)
 	r.Use(custommiddleware.WithGzip)
 
-	if app.PrivateKey != nil {
-		r.Use(custommiddleware.WithDecryption(app.PrivateKey))
-	}
-
-	if app.Config.HashKey != "" {
-		r.Use(custommiddleware.WithHashCheck(app.Config.HashKey))
-	}
-
 	summaryHandler := metrics.NewSummaryHandler(app.MetricsService)
 	getHandler := metrics.NewGetHandler(app.MetricsService)
 	storeHandler := metrics.NewStoreHandler(app.MetricsService, app.Config, app.AuditManager)
@@ -40,49 +32,57 @@ func (app App) Router() *chi.Mux {
 	counterPostHandler := deprecated.NewCountersPostHandler(app.MetricsService)
 	gaugePostHandler := deprecated.NewGaugesPostHandler(app.MetricsService)
 
-	r.Get("/", summaryHandler.Handle)
-
-	r.Post("/updates/", storeAllHandler.Handle)
-
-	pingHandler := health.NewPingHandler(app.MetricsService)
-	r.Get("/ping", pingHandler.Handle)
-
-	r.Route("/value", func(r chi.Router) {
-		r.Post("/", getHandler.Handle)
-
-		r.Route("/counter", func(r chi.Router) {
-			r.NotFound(handler.MetricNotFound)
-			r.Get("/{metric}", counterGetHandler.Handle)
-		})
-
-		r.Route("/gauge", func(r chi.Router) {
-			r.NotFound(handler.MetricNotFound)
-			r.Get("/{metric}", gaugeGetHandler.Handle)
-		})
-	})
-
-	r.Route("/update", func(r chi.Router) {
-		r.Post("/", storeHandler.Handle)
-
-		r.Route("/counter", func(r chi.Router) {
-			r.NotFound(handler.MetricNotFound)
-			r.Post("/{metric}/{value}", counterPostHandler.Handle)
-		})
-
-		r.Route("/gauge", func(r chi.Router) {
-			r.NotFound(handler.MetricNotFound)
-			r.Post("/{metric}/{value}", gaugePostHandler.Handle)
-		})
-	})
-
-	r.NotFound(handler.UnknownMetricTypeHandler)
-
 	r.Mount("/debug", middleware.Profiler())
-
-	// Swagger documentation
 	r.Get("/swagger/*", swagger.Handler(
 		swagger.URL("/swagger/doc.json"),
 	))
+
+	r.Group(func(r chi.Router) {
+		if app.PrivateKey != nil {
+			r.Use(custommiddleware.WithDecryption(app.PrivateKey))
+		}
+
+		if app.Config.HashKey != "" {
+			r.Use(custommiddleware.WithHashCheck(app.Config.HashKey))
+		}
+
+		r.Get("/", summaryHandler.Handle)
+
+		r.Post("/updates/", storeAllHandler.Handle)
+
+		pingHandler := health.NewPingHandler(app.MetricsService)
+		r.Get("/ping", pingHandler.Handle)
+
+		r.Route("/value", func(r chi.Router) {
+			r.Post("/", getHandler.Handle)
+
+			r.Route("/counter", func(r chi.Router) {
+				r.NotFound(handler.MetricNotFound)
+				r.Get("/{metric}", counterGetHandler.Handle)
+			})
+
+			r.Route("/gauge", func(r chi.Router) {
+				r.NotFound(handler.MetricNotFound)
+				r.Get("/{metric}", gaugeGetHandler.Handle)
+			})
+		})
+
+		r.Route("/update", func(r chi.Router) {
+			r.Post("/", storeHandler.Handle)
+
+			r.Route("/counter", func(r chi.Router) {
+				r.NotFound(handler.MetricNotFound)
+				r.Post("/{metric}/{value}", counterPostHandler.Handle)
+			})
+
+			r.Route("/gauge", func(r chi.Router) {
+				r.NotFound(handler.MetricNotFound)
+				r.Post("/{metric}/{value}", gaugePostHandler.Handle)
+			})
+		})
+
+		r.NotFound(handler.UnknownMetricTypeHandler)
+	})
 
 	return r
 }
