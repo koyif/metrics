@@ -129,7 +129,7 @@ func (sh StoreHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if sh.cfg.Storage.StoreInterval.Value() == 0 {
+	if sh.cfg.StoreInterval.Value() == 0 {
 		if err := sh.service.Persist(); err != nil {
 			logger.Log.Warn(failedToPersistMetricsErrorMessage, logger.Error(err))
 			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)

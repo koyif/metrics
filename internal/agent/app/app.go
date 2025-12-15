@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"net/http"
+	"sync"
 
 	"github.com/koyif/metrics/internal/agent"
 	"github.com/koyif/metrics/internal/agent/client"
@@ -20,7 +21,7 @@ func New(cfg *config.Config) *App {
 	}
 }
 
-func (app *App) Run(ctx context.Context) error {
+func (app *App) Run(ctx context.Context, wg *sync.WaitGroup) error {
 	sc := scraper.New(app.cfg)
 	metricsCh := sc.Start(ctx)
 
@@ -30,7 +31,7 @@ func (app *App) Run(ctx context.Context) error {
 	}
 
 	a := agent.New(app.cfg, cl)
-	a.Start(ctx, metricsCh)
+	a.Start(ctx, wg, metricsCh)
 
 	return nil
 }

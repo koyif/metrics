@@ -24,9 +24,7 @@ func Example_storeCounter() {
 	repo := repository.NewMetricsRepository()
 	svc := service.NewMetricsService(repo, nil)
 	cfg := &config.Config{
-		Storage: config.StorageConfig{
-			StoreInterval: types.DurationInSeconds(300 * time.Second), // Non-zero to skip immediate persistence
-		},
+		StoreInterval: types.DurationInSeconds(300 * time.Second), // Non-zero to skip immediate persistence
 	}
 	handler := metrics.NewStoreHandler(svc, cfg, nil)
 
@@ -62,9 +60,7 @@ func Example_storeGauge() {
 	repo := repository.NewMetricsRepository()
 	svc := service.NewMetricsService(repo, nil)
 	cfg := &config.Config{
-		Storage: config.StorageConfig{
-			StoreInterval: types.DurationInSeconds(300 * time.Second), // Non-zero to skip immediate persistence
-		},
+		StoreInterval: types.DurationInSeconds(300 * time.Second), // Non-zero to skip immediate persistence
 	}
 	handler := metrics.NewStoreHandler(svc, cfg, nil)
 
@@ -100,9 +96,7 @@ func Example_batchStore() {
 	repo := repository.NewMetricsRepository()
 	svc := service.NewMetricsService(repo, nil)
 	cfg := &config.Config{
-		Storage: config.StorageConfig{
-			StoreInterval: types.DurationInSeconds(300 * time.Second), // Non-zero to skip immediate persistence
-		},
+		StoreInterval: types.DurationInSeconds(300 * time.Second), // Non-zero to skip immediate persistence
 	}
 	handler := metrics.NewStoreAllHandler(svc, cfg, nil)
 
@@ -229,9 +223,7 @@ func Example_counterAccumulation() {
 	repo := repository.NewMetricsRepository()
 	svc := service.NewMetricsService(repo, nil)
 	cfg := &config.Config{
-		Storage: config.StorageConfig{
-			StoreInterval: types.DurationInSeconds(300 * time.Second), // Non-zero to skip immediate persistence
-		},
+		StoreInterval: types.DurationInSeconds(300 * time.Second), // Non-zero to skip immediate persistence
 	}
 	storeHandler := metrics.NewStoreHandler(svc, cfg, nil)
 	getHandler := metrics.NewGetHandler(svc)
