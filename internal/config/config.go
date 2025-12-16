@@ -20,6 +20,7 @@ type Config struct {
 	URL             string                  `json:"audit_url" env:"AUDIT_URL"`
 	HashKey         string                  `json:"hash_key" env:"KEY"`
 	CryptoKey       string                  `json:"crypto_key" env:"CRYPTO_KEY"`
+	TrustedSubnet   string                  `json:"trusted_subnet" env:"TRUSTED_SUBNET"`
 	ConfigPath      string                  `json:"-"`
 }
 
@@ -81,6 +82,7 @@ func setupFlags(cfg *Config) {
 	flag.StringVar(&cfg.FilePath, "audit-file", cfg.FilePath, "путь к файлу для логов аудита")
 	flag.StringVar(&cfg.URL, "audit-url", cfg.URL, "URL для отправки логов аудита")
 	flag.StringVar(&cfg.CryptoKey, "crypto-key", cfg.CryptoKey, "путь до файла с приватным ключом")
+	flag.StringVar(&cfg.TrustedSubnet, "t", cfg.TrustedSubnet, "доверенная подсеть в формате CIDR")
 
 	// Parse flags again - command-line flags will override JSON/env values
 	flag.Parse()
