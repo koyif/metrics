@@ -17,6 +17,7 @@ import (
 	"github.com/koyif/metrics/pkg/crypto"
 	"github.com/koyif/metrics/pkg/errutil"
 	"github.com/koyif/metrics/pkg/logger"
+	"github.com/koyif/metrics/pkg/netutil"
 )
 
 type MetricsClient struct {
@@ -24,6 +25,7 @@ type MetricsClient struct {
 	baseURL    *url.URL
 	cfg        *config.Config
 	publicKey  *rsa.PublicKey
+	localIP    string
 }
 
 const errClosingResponseBody = "error closing response body"
@@ -48,6 +50,13 @@ func New(cfg *config.Config, c *http.Client) (*MetricsClient, error) {
 		client.publicKey = publicKey
 		logger.Log.Info("public key loaded successfully for encryption")
 	}
+
+	localIP, err := netutil.GetOutboundIP()
+	if err != nil {
+		return nil, fmt.Errorf("failed to detect local IP address: %w", err)
+	}
+	client.localIP = localIP
+	logger.Log.Info("detected local IP address", logger.String("ip", localIP))
 
 	return client, nil
 }
@@ -137,6 +146,8 @@ func (c *MetricsClient) retry(updatesURL *url.URL, requestBody []byte) error {
 
 		req.Header.Set("HashSHA256", fmt.Sprintf("%x", h.Sum(nil)))
 	}
+
+	req.Header.Set("X-Real-IP", c.localIP)
 
 	for i := range maxAttempts {
 		response, lastErr = c.httpClient.Do(req)

@@ -8,12 +8,12 @@ import (
 
 	swagger "github.com/swaggo/http-swagger/v2"
 
-	"github.com/koyif/metrics/internal/handler/health"
-
 	"github.com/koyif/metrics/internal/handler"
 	"github.com/koyif/metrics/internal/handler/deprecated"
+	"github.com/koyif/metrics/internal/handler/health"
 	"github.com/koyif/metrics/internal/handler/metrics"
 	custommiddleware "github.com/koyif/metrics/internal/handler/middleware"
+	"github.com/koyif/metrics/pkg/logger"
 )
 
 func (app App) Router() *chi.Mux {
@@ -38,6 +38,14 @@ func (app App) Router() *chi.Mux {
 	))
 
 	r.Group(func(r chi.Router) {
+		if app.Config.TrustedSubnet != "" {
+			ipCheckMiddleware, err := custommiddleware.WithIPCheck(app.Config.TrustedSubnet)
+			if err != nil {
+				logger.Log.Fatal("invalid trusted subnet configuration", logger.Error(err))
+			}
+			r.Use(ipCheckMiddleware)
+		}
+
 		if app.PrivateKey != nil {
 			r.Use(custommiddleware.WithDecryption(app.PrivateKey))
 		}

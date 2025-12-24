@@ -20,6 +20,7 @@ type Config struct {
 	HashKey        string                  `json:"hash_key" env:"KEY"`
 	RateLimit      int                     `json:"rate_limit" env:"RATE_LIMIT" env-default:"3"`
 	CryptoKey      string                  `json:"crypto_key" env:"CRYPTO_KEY"`
+	UseGRPC        bool                    `json:"use_grpc" env:"USE_GRPC" env-default:"false"`
 	ConfigPath     string                  `json:"-"`
 }
 
@@ -73,6 +74,7 @@ func setupFlags(cfg *Config) {
 	flag.IntVar(&cfg.RateLimit, "l", cfg.RateLimit, "лимит одновременной отправки метрик")
 	flag.StringVar(&cfg.Addr, "a", cfg.Addr, "адрес эндпоинта HTTP-сервера")
 	flag.StringVar(&cfg.CryptoKey, "crypto-key", cfg.CryptoKey, "путь до файла с публичным ключом")
+	flag.BoolVar(&cfg.UseGRPC, "use-grpc", cfg.UseGRPC, "использовать gRPC вместо HTTP")
 
 	flag.Parse()
 }
