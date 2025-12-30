@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	_ "net/http/pprof"
 	"os/signal"
@@ -14,7 +15,11 @@ import (
 
 	"github.com/koyif/metrics/internal/app"
 	"github.com/koyif/metrics/internal/config"
+	grpcinterceptor "github.com/koyif/metrics/internal/grpc/interceptor"
+	grpcserver "github.com/koyif/metrics/internal/grpc/server"
+	"github.com/koyif/metrics/internal/proto/api/proto"
 	"github.com/koyif/metrics/pkg/logger"
+	"google.golang.org/grpc"
 
 	_ "github.com/koyif/metrics/docs"
 )
@@ -72,6 +77,11 @@ func main() {
 
 	server := startServer(application)
 
+	var grpcSrv *grpc.Server
+	if cfg.GRPCAddr != "" {
+		grpcSrv = startGRPCServer(application, &wg)
+	}
+
 	<-ctx.Done()
 	logger.Log.Info("shutting down gracefully")
 
@@ -82,6 +92,12 @@ func main() {
 	// Shutdown HTTP server gracefully
 	if err := server.Shutdown(shutdownCtx); err != nil {
 		logger.Log.Error("server shutdown error", logger.Error(err))
+	}
+
+	// Shutdown gRPC server gracefully
+	if grpcSrv != nil {
+		logger.Log.Info("shutting down gRPC server")
+		grpcSrv.GracefulStop()
 	}
 
 	// Wait for background tasks (file persistence) to complete
@@ -108,4 +124,28 @@ func startServer(a *app.App) *http.Server {
 	}()
 
 	return server
+}
+
+func startGRPCServer(a *app.App, wg *sync.WaitGroup) *grpc.Server {
+	wg.Add(1)
+
+	interceptor := grpcinterceptor.IPCheckInterceptor(a.Config.TrustedSubnet)
+	grpcSrv := grpc.NewServer(grpc.UnaryInterceptor(interceptor))
+	metricsServer := grpcserver.NewMetricsServer(a.MetricsService, a.Config, a.AuditManager)
+	proto.RegisterMetricsServer(grpcSrv, metricsServer)
+
+	lis, err := net.Listen("tcp", a.Config.GRPCAddr)
+	if err != nil {
+		logger.Log.Fatal("failed to listen for gRPC", logger.Error(err))
+	}
+
+	go func() {
+		defer wg.Done()
+		logger.Log.Info("starting gRPC server", logger.String("address", a.Config.GRPCAddr))
+		if err := grpcSrv.Serve(lis); err != nil {
+			logger.Log.Error("gRPC server error", logger.Error(err))
+		}
+	}()
+
+	return grpcSrv
 }
